@@ -58,7 +58,7 @@ function TopNav(props) {
         </IconButton>
       </Toolbar>
       <Divider />
-      <List>
+      <List className="altFont">
         {navItems.map((item) => (
           <ListItem key={item} >
             <ListItemButton sx={{ textAlign: 'center' }}>
@@ -79,8 +79,8 @@ function TopNav(props) {
   return (
     <Box sx={{ display: 'flex' }}>
       <HideOnScroll>
-        <AppBar component="nav" sx={{ backgroundColor: "#060523" }}>
-          <Toolbar>
+        <AppBar component="nav" sx={{ backgroundColor: 'rgb(6, 5, 35, 0.9)' }}>
+          <Toolbar sx={{ minHeight: { xs: '50px' } }}>
             <Typography
               variant="h6"
               component="div"
@@ -88,14 +88,17 @@ function TopNav(props) {
             >
               LB
             </Typography>
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Box className="altFont" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {mobileOpen ? null :
-                navItems.map((item) => (
-                  <Button key={item} sx={{ color: '#9563bb' }}>
-                    <CodeIcon sx={{ color: '#34a92c', marginRight: '3px' }} />
-                    <div className="hvr-left">{item}</div>
-                  </Button>
-                ))
+                <>
+                  {navItems.map((item) => (
+                    <Button key={item} sx={{ color: '#9563bb' }}>
+                      <CodeIcon sx={{ color: '#34a92c', marginRight: '3px' }} />
+                      <div className="hvr-left">{item}</div>
+                    </Button>
+                  ))}
+                  <Button variant="outlined" color='success' sx={{ color: '#34a92c', marginLeft: '20px' }}>Contact Me</Button>
+                </>
               }
             </Box>
             <IconButton
@@ -103,7 +106,7 @@ function TopNav(props) {
               aria-label="open drawer"
               edge="end"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { sm: 'none' }, color: '#34a92c' }}
+              sx={{ display: { sm: 'none' }, color: '#34a92c' }}
             >
               <FingerprintIcon className='fingerprint' />
             </IconButton>
@@ -128,7 +131,7 @@ function TopNav(props) {
           {drawer}
         </Drawer>
       </Box>
-    </Box>
+    </Box >
   );
 }
 

@@ -2,3 +2,13 @@ html,
 body {
   background-color: #010c19;
 }
+
+h2 {
+  color: #d8e0f3;
+  font-weight: 600 !important;
+}
+
+.altFont,
+.altFont * {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace !important;
+}
