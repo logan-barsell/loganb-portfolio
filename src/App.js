@@ -7,6 +7,7 @@ import TopNav from './components/TopNav';
 import Intro from './components/Intro';
 import Section from './components/Section';
 import Aboutme from './components/Aboutme';
+import Work from './components/Work';
 
 const App = () => {
   return (
@@ -17,6 +18,9 @@ const App = () => {
           <Intro />
           <Section title='Who Am I?'>
             <Aboutme />
+          </Section>
+          <Section title='Work Experience'>
+            <Work />
           </Section>
         </Box>
       </Container>
