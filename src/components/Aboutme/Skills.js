@@ -44,7 +44,7 @@ const Skills = () => {
         <Typography
           variant='body1'
           component='div'
-        >GitHub, CI/CD, Domains, DNS Configuration
+        >GitHub, CI/CD, Domains, Hosting, DNS Configuration
         </Typography>
       </Container>
     </Box>
