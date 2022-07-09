@@ -4,11 +4,13 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Container from '@mui/material/Container';
+
 
 const Intro = () => {
   return (
-    <div sx={{ marginTop: '100px' }}>
-      <Box sx={{ my: 10, px: { sm: 5, xs: 0 } }}>
+    <Container sx={{ marginTop: '100px' }}>
+      <Box sx={{ my: 10, px: { sm: 2, xs: 0 } }}>
         <Typography
           sx={{
             color: '#d8e0f3',
@@ -40,7 +42,7 @@ const Intro = () => {
           Web Developer
         </Typography>
       </Box>
-      <Box sx={{ my: 12, px: { sm: 5, xs: 0 } }}>
+      <Box sx={{ my: 12, px: { sm: 2, xs: 0 } }}>
         <Typography
           sx={{
             color: '#808dcb',
@@ -72,10 +74,10 @@ const Intro = () => {
             },
             float: 'right'
           }}>
-          Stuff Like This!
+          My Portfolio
         </Button>
       </Box>
-    </div>
+    </Container>
   );
 };
 

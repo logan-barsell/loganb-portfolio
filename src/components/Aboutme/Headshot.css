@@ -1,0 +1,44 @@
+.box {
+  --b: 1px; /* thickness of the border */
+  --c: #34a92c; /* color of the border */
+  --w: 20px; /* width of border */
+
+  border: var(--b) solid transparent; /* space for the border */
+  --g: #0000 90deg, var(--c) 0;
+  background: conic-gradient(from 90deg at top var(--b) left var(--b), var(--g))
+      0 0,
+    conic-gradient(from 180deg at top var(--b) right var(--b), var(--g)) 100% 0,
+    conic-gradient(from 0deg at bottom var(--b) left var(--b), var(--g)) 0 100%,
+    conic-gradient(from -90deg at bottom var(--b) right var(--b), var(--g)) 100%
+      100%;
+  background-size: var(--w) var(--w);
+  background-origin: border-box;
+  background-repeat: no-repeat;
+
+  box-sizing: border-box;
+  margin: 5px;
+  display: inline-flex;
+  justify-content: center;
+  transition: all 500ms ease;
+}
+
+.box:hover {
+  --w: 40px;
+  transform: scale(0.95);
+}
+
+@media screen and (max-width: 599px) {
+  .box {
+    margin: 50px;
+  }
+}
+
+@media screen and (max-width: 450px) {
+  .box {
+    margin: 0px;
+  }
+}
+
+.overlay {
+  background-color: darkgreen;
+}
