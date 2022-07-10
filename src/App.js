@@ -8,13 +8,15 @@ import Intro from './components/Intro';
 import Section from './components/Section';
 import Aboutme from './components/Aboutme';
 import Work from './components/Work';
+import Contact from './components/Contact';
+import BottomNav from './components/BottomNav';
 
 const App = () => {
   return (
     <>
       <TopNav />
       <Container>
-        <Box height="2000px" sx={{ my: 10 }}>
+        <Box sx={{ my: 10 }}>
           <Intro />
           <Section title='Who Am I?'>
             <Aboutme />
@@ -22,8 +24,10 @@ const App = () => {
           <Section title='Work Experience'>
             <Work />
           </Section>
+          <Contact />
         </Box>
       </Container>
+      <BottomNav />
     </>
   );
 };

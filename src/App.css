@@ -1,6 +1,7 @@
 html,
 body {
   background-color: #010c19;
+  margin: 0px !important;
 }
 
 h2 {
@@ -12,3 +13,7 @@ h2 {
 .altFont * {
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace !important;
 }
+
+/* .MuiBottomNavigationAction-label {
+  color: white;
+} */
