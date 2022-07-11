@@ -12,7 +12,7 @@ const BottomNav = () => {
       <BottomNavigation
         className="altFont"
         showLabels
-        sx={{ backgroundColor: 'rgb(6, 5, 35, 0.9)', height: '80px', fontSize: '20px', '.MuiBottomNavigationAction-label': { color: '#808dcb' } }}
+        sx={{ backgroundColor: 'rgb(6, 5, 35, 0.9)', height: '80px', '.MuiBottomNavigationAction-label': { color: '#808dcb', fontSize: { xs: '15px', sm: '20px' } } }}
       >
         <BottomNavigationAction label="Email" icon={<MailIcon sx={{ color: '#9563bb', fontSize: '50px' }} />} />
         <BottomNavigationAction label="LinkedIn" icon={<LinkedInIcon sx={{ color: '#9563bb', fontSize: '50px' }} />} />

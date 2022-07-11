@@ -8,6 +8,7 @@ import Intro from './components/Intro';
 import Section from './components/Section';
 import Aboutme from './components/Aboutme';
 import Work from './components/Work';
+import Portfolio from './components/Portfolio';
 import Contact from './components/Contact';
 import BottomNav from './components/BottomNav';
 
@@ -23,6 +24,9 @@ const App = () => {
           </Section>
           <Section title='Work Experience'>
             <Work />
+          </Section>
+          <Section title="Portfolio">
+            <Portfolio />
           </Section>
           <Contact />
         </Box>

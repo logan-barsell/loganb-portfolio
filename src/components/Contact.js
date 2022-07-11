@@ -17,7 +17,11 @@ const Contact = () => {
           sx={{
             color: '#d8e0f3',
             fontWeight: 700,
-            textAlign: 'center'
+            textAlign: 'center',
+            fontSize: {
+              xs: '38px',
+              sm: '48px'
+            }
           }}>
           Interested?
         </Typography>
