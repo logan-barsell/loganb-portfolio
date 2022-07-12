@@ -1,3 +1,5 @@
+import './ProjectCard.css';
+
 import * as React from 'react';
 import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
@@ -35,40 +37,42 @@ const ProjectCard = ({ project }) => {
     setExpanded(!expanded);
   };
 
-  const { title, type, img, desc, buildList, hosted, link } = project;
+  const { title, type, img, desc, buildList, hosted, github, link } = project;
 
   const renderBuildList = buildList.map((listItem, index) => (
     <Typography key={index} paragraph>{listItem}</Typography>
   ));
 
   return (
-    <Card sx={{ maxWidth: 345, backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+    <Card sx={{ maxWidth: 345, backgroundColor: 'rgba(0, 0, 0, 0.4)', margin: 'auto' }}>
       <CardHeader
-        sx={{ color: '#d8e0f3', '.MuiCardHeader-subheader': { color: '#34a92c' } }}
+        sx={{ color: '#d8e0f3', fontWeight: 600, '.MuiCardHeader-title': { fontWeight: 600 }, '.MuiCardHeader-subheader': { color: '#34a92c', opacity: 0.7, fontWeight: 600 } }}
         action={
-          <IconButton aria-label="settings">
-            <AttachFileIcon sx={{ fontSize: '30px', color: '#808dcb' }} />
+          <IconButton href={link} target="_blank" aria-label="settings">
+            <AttachFileIcon className="hvr-icon" sx={{ fontSize: '30px', color: '#808dcb' }} />
           </IconButton>
         }
         title={title}
         subheader={type}
       />
       <CardMedia
+        sx={{ opacity: 0.8, my: 1 }}
         component="img"
         height="194"
         image={img}
         alt="Project Thumbnail"
       />
-      <CardContent>
+      {/* <CardContent>
         <Typography variant="body2" color="#808dcb" sx={{ fontSize: '15px' }}>
           {desc}
         </Typography>
-      </CardContent>
+      </CardContent> */}
       <CardActions disableSpacing>
-        <IconButton aria-label="See code on GitHub">
-          <GitHubIcon sx={{ fontSize: '40px', color: '#34a92c' }} />
+        <IconButton href={github} target="_blank" aria-label="See code on GitHub">
+          <GitHubIcon className="hvr-icon" sx={{ fontSize: '40px', color: '#34a92c' }} />
         </IconButton>
         <ExpandMore
+          className="hvr-icon"
           expand={expanded}
           onClick={handleExpandClick}
           aria-expanded={expanded}
@@ -81,10 +85,10 @@ const ProjectCard = ({ project }) => {
         <CardContent className="altFont" sx={{ color: '#34a92c', textAlign: 'center' }}>
           <Typography paragraph sx={{ fontSize: '22px', fontWeight: 600 }} >BUILT WITH</Typography>
           {renderBuildList}
-          <Typography sx={{ fontVariant: 'small-caps', fontSize: '22px', fontWeight: '600' }}>
+          <Typography sx={{ fontVariant: 'small-caps', fontSize: '22px', fontWeight: '600', mt: 3 }}>
             Hosted on {hosted}
           </Typography>
-          <Button href={link} target="_blank" variant="outlined" color="success" sx={{ color: '#34a92c' }}>See Project</Button>
+          <Button href={link} target="_blank" variant="outlined" color="success" sx={{ color: '#34a92c', my: 1 }}>Visit Project</Button>
         </CardContent>
       </Collapse>
     </Card>

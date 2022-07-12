@@ -14,6 +14,13 @@ h2 {
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace !important;
 }
 
-/* .MuiBottomNavigationAction-label {
-  color: white;
-} */
+.hvr-icon {
+  -o-transition: all 300ms ease !important;
+  -moz-transition: all 300ms ease !important;
+  -webkit-transition: all 300ms ease !important;
+  transition: all 300ms ease !important;
+}
+
+.hvr-icon:hover {
+  opacity: 0.5;
+}

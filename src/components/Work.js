@@ -86,7 +86,7 @@ const Work = () => {
             color='success'
             sx={{ color: '#34a92c', display: 'table', margin: '30px auto' }}
           >
-            See Website
+            Visit Website
           </Button>
         </Box>
       </Container>
