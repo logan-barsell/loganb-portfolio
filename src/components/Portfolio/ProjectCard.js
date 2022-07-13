@@ -1,5 +1,3 @@
-import './ProjectCard.css';
-
 import * as React from 'react';
 import { styled } from '@mui/material/styles';
 import Button from '@mui/material/Button';
@@ -44,7 +42,7 @@ const ProjectCard = ({ project }) => {
   ));
 
   return (
-    <Card sx={{ maxWidth: 345, backgroundColor: 'rgba(0, 0, 0, 0.4)', margin: 'auto' }}>
+    <Card sx={{ maxWidth: 450, backgroundColor: 'rgba(0, 0, 0, 0.4)', margin: 'auto' }}>
       <CardHeader
         sx={{ color: '#d8e0f3', fontWeight: 600, '.MuiCardHeader-title': { fontWeight: 600 }, '.MuiCardHeader-subheader': { color: '#34a92c', opacity: 0.7, fontWeight: 600 } }}
         action={
@@ -58,7 +56,7 @@ const ProjectCard = ({ project }) => {
       <CardMedia
         sx={{ opacity: 0.8, my: 1 }}
         component="img"
-        height="194"
+        height="250"
         image={img}
         alt="Project Thumbnail"
       />

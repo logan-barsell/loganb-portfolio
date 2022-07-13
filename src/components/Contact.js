@@ -3,14 +3,15 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import LinkedInIcon from '@mui/icons-material/LinkedIn';
-import GitHubIcon from '@mui/icons-material/GitHub';
 import MailIcon from '@mui/icons-material/Mail';
 
-const Contact = () => {
+const Contact = React.forwardRef((props, refs) => {
   return (
     <Container>
-      <Box sx={{ pt: { xs: 7, sm: 12 }, pb: 1 }}>
+      <Box
+        ref={(el) => { refs.current[3] = el }}
+        sx={{ pt: { xs: 7, sm: 12 }, pb: 1 }}
+      >
         <Typography
           variant="h3"
           component="div"
@@ -26,6 +27,8 @@ const Contact = () => {
           Interested?
         </Typography>
         <Button
+          href="mailto:contact@loganbarsell.com"
+          target="_blank"
           className="altFont"
           startIcon={<MailIcon />}
           variant="outlined"
@@ -33,16 +36,15 @@ const Contact = () => {
           color="success"
           sx={{
             display: 'flex',
+            width: 'fit-content',
             color: '#34a92c',
             margin: '30px auto'
           }}>
           Drop me a line!
         </Button>
-        {/* <LinkedInIcon sx={{ fontSize: '50px', color: '#9563bb' }} />
-        <GitHubIcon sx={{ fontSize: '50px', color: '#9563bb' }} /> */}
       </Box>
     </Container>
   );
-};
+});
 
 export default Contact;

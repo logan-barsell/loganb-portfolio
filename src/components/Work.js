@@ -9,8 +9,7 @@ import SignalWifi3BarIcon from '@mui/icons-material/SignalWifi3Bar';
 import Button from '@mui/material/Button';
 import { workHistory } from './workHistory';
 
-const Work = () => {
-
+const Work = React.forwardRef((props, refs) => {
   const [value, setValue] = React.useState(0);
 
   const handleChange = (event, newValue) => {
@@ -47,6 +46,7 @@ const Work = () => {
 
   return (
     <Box
+      ref={(el) => { refs.current[1] = el }}
       sx={{
         flexGrow: 1,
         color: '#808dcb',
@@ -93,6 +93,6 @@ const Work = () => {
 
     </Box >
   );
-};
+});
 
 export default Work;

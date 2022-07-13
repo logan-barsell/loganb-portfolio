@@ -19,6 +19,8 @@ import Slide from '@mui/material/Slide';
 import CodeIcon from '@mui/icons-material/Code';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 
+
+
 function HideOnScroll(props) {
   const { children, window } = props;
   // Note that you normally won't need to set the window ref as useScrollTrigger
@@ -38,8 +40,8 @@ function HideOnScroll(props) {
 const drawerWidth = 240;
 const navItems = ['Who Am I?', 'Experience', 'Projects'];
 
-function TopNav(props) {
-  const { window } = props;
+const TopNav = React.forwardRef((props, refs) => {
+  const { window, scrollEvent } = props;
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const handleDrawerToggle = () => {
@@ -47,7 +49,7 @@ function TopNav(props) {
   };
 
   const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
+    <Box onClickCapture={handleDrawerToggle} sx={{ textAlign: 'center' }}>
       <Toolbar sx={{ justifyContent: 'end' }}>
         <IconButton
           aria-label="close drawer"
@@ -59,17 +61,30 @@ function TopNav(props) {
       </Toolbar>
       <Divider />
       <List className="altFont">
-        {navItems.map((item) => (
+        {navItems.map((item, index) => (
           <ListItem key={item} >
-            <ListItemButton sx={{ textAlign: 'center' }}>
-
+            <ListItemButton
+              onClick={() => {
+                scrollEvent(index);
+              }}
+              sx={{ textAlign: 'center' }}
+            >
               <CodeIcon sx={{ color: '#34a92c', justifyContent: 'end', marginRight: '3px' }} />
-
               <ListItemText className="hvr-left" primary={item} sx={{ color: '#9563bb', textAlign: 'left' }} />
             </ListItemButton>
           </ListItem>
         ))}
-        <Button variant="outlined" size="large" color='success' sx={{ color: '#34a92c', marginTop: '35px' }}>Contact Me</Button>
+        <Button
+          onClick={() => scrollEvent(3)}
+          variant="outlined"
+          size="large"
+          color='success'
+          sx={{
+            color: '#34a92c',
+            marginTop: '35px'
+          }}>
+          Contact Me
+        </Button>
       </List>
     </Box>
   );
@@ -91,13 +106,24 @@ function TopNav(props) {
             <Box className="altFont" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {mobileOpen ? null :
                 <>
-                  {navItems.map((item) => (
-                    <Button key={item} sx={{ color: '#9563bb' }}>
+                  {navItems.map((item, index) => (
+                    <Button
+                      onClick={() => scrollEvent(index)}
+                      key={item}
+                      sx={{ color: '#9563bb' }}
+                    >
                       <CodeIcon sx={{ color: '#34a92c', marginRight: '3px' }} />
                       <div className="hvr-left">{item}</div>
                     </Button>
                   ))}
-                  <Button variant="outlined" color='success' sx={{ color: '#34a92c', marginLeft: '20px' }}>Contact Me</Button>
+                  <Button
+                    onClick={() => scrollEvent(3)}
+                    variant="outlined"
+                    color='success'
+                    sx={{ color: '#34a92c', marginLeft: '20px' }}
+                  >
+                    Contact Me
+                  </Button>
                 </>
               }
             </Box>
@@ -133,6 +159,6 @@ function TopNav(props) {
       </Box>
     </Box >
   );
-}
+})
 
 export default TopNav;

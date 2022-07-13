@@ -7,7 +7,7 @@ import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 
 
-const Intro = () => {
+const Intro = React.forwardRef(({ scrollEvent }, refs) => {
   return (
     <Container sx={{ marginTop: '100px' }}>
       <Box sx={{ my: 10, px: { sm: 2, xs: 0 } }}>
@@ -58,6 +58,7 @@ const Intro = () => {
           I <span>DESIGN</span>, <span>DEVELOP</span>, and <span>DEPLOY</span> things to the web.
         </Typography>
         <Button
+          onClick={() => scrollEvent(2)}
           className="altFont"
           variant="outlined"
           size="large"
@@ -79,6 +80,6 @@ const Intro = () => {
       </Box>
     </Container>
   );
-};
+});
 
 export default Intro;

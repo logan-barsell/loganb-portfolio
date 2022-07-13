@@ -5,9 +5,12 @@ import Bio from './Bio';
 import Headshot from './Headshot';
 import Skills from './Skills';
 
-const Aboutme = () => {
+const Aboutme = React.forwardRef((props, refs) => {
   return (
-    <Box sx={{ flexGrow: 1 }}>
+    <Box
+      ref={(el) => { refs.current[0] = el }}
+      sx={{ flexGrow: 1 }}
+    >
       <Grid container spacing={2} sx={{ py: 3 }}>
         <Grid item xs={12} sm={6} md={8}>
           <Bio />
@@ -19,6 +22,6 @@ const Aboutme = () => {
       <Skills />
     </Box>
   );
-};
+});
 
 export default Aboutme;

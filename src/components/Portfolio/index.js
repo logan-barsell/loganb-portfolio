@@ -7,7 +7,7 @@ import ProjectCard from './ProjectCard';
 import { projects } from './projects';
 
 
-const Portfolio = () => {
+const Portfolio = React.forwardRef((props, refs) => {
 
   const [page, setPage] = React.useState(1);
 
@@ -28,8 +28,10 @@ const Portfolio = () => {
 
 
   return (
-    <Container>
-      <Box my={6} >
+    <Container ref={(el) => { refs.current[2] = el }}>
+      <Box
+        my={6}
+      >
         <Pagination
           count={count}
           page={page}
@@ -44,12 +46,15 @@ const Portfolio = () => {
             '.MuiPaginationItem-root.Mui-selected:hover': { backgroundColor: 'rgba(39, 170, 68, 0.4)' }
           }}
         />
-        <Grid container spacing={3} >
+        <Grid
+          container
+          spacing={3}
+        >
           {renderProjects}
         </Grid>
       </Box>
     </Container>
   );
-};
+});
 
 export default Portfolio;
