@@ -1,4 +1,5 @@
 import './TopNav.css';
+import logo from '../images/navLogo.png';
 
 import * as React from 'react';
 import AppBar from '@mui/material/AppBar';
@@ -99,9 +100,9 @@ const TopNav = React.forwardRef((props, refs) => {
             <Typography
               variant="h6"
               component="div"
-              sx={{ flexGrow: 1, display: { sm: 'block' } }}
+              sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'left' }}
             >
-              LB
+              <img src={logo} height='40px' alt="custom logo" />
             </Typography>
             <Box className="altFont" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {mobileOpen ? null :
@@ -120,7 +121,7 @@ const TopNav = React.forwardRef((props, refs) => {
                     onClick={() => scrollEvent(3)}
                     variant="outlined"
                     color='success'
-                    sx={{ color: '#34a92c', marginLeft: '20px' }}
+                    sx={{ color: '#34a92c', marginLeft: '10px' }}
                   >
                     Contact Me
                   </Button>

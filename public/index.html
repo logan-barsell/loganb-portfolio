@@ -56,6 +56,9 @@
         display: flex;
         align-items: baseline;
         gap: 3px;
+        z-index: 1;
+        position: absolute;
+        top: 0px;
       }
 
       .loading::after {
@@ -66,12 +69,36 @@
         display: inline-block;
         animation: cursor-blink 1.5s steps(2) infinite;
       }
+
+      @keyframes fadeInAnimation {
+        0% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 0.7;
+        }
+      }
+
+      .img-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 25vh;
+      }
+      .img-container img {
+        height: 250px;
+        animation: fadeInAnimation ease 5s;
+        animation-iteration-count: 1;
+        animation-fill-mode: forwards;
+      }
     </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root">
       <div class="loading">> Loading application...</div>
+      <div class="img-container">
+        <img src="./logo.png" />
+      </div>
     </div>
     <!--
       This HTML file is a template.
