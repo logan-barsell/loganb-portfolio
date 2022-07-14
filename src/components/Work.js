@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState } from 'react';
 import { styled } from '@mui/material/styles';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
@@ -10,7 +10,7 @@ import Button from '@mui/material/Button';
 import { workHistory } from './workHistory';
 
 const Work = React.forwardRef((props, refs) => {
-  const [value, setValue] = React.useState(0);
+  const [value, setValue] = useState(0);
 
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -25,11 +25,6 @@ const Work = React.forwardRef((props, refs) => {
     </Typography>
   ));
 
-  const StyledTabs = styled(Tabs)({
-    '& .MuiTabs-indicator': {
-      backgroundColor: '#9563bb',
-    },
-  });
 
   const StyledTab = styled((props) => <Tab {...props} />)(
     ({ theme }) => ({
@@ -39,6 +34,7 @@ const Work = React.forwardRef((props, refs) => {
       }
     }),
   );
+
 
   const renderTabs = workHistory.map(({ company, id }) => (
     <StyledTab label={company} key={id} />
@@ -53,7 +49,7 @@ const Work = React.forwardRef((props, refs) => {
         mx: { sm: 7, xs: 0 }
       }}
     >
-      <StyledTabs
+      <Tabs
         className="altFont"
         value={value}
         onChange={handleChange}
@@ -65,11 +61,14 @@ const Work = React.forwardRef((props, refs) => {
           [`& .${tabsClasses.scrollButtons}`]: {
             '&.Mui-disabled': { opacity: 0.3 }
           },
+          '& .MuiTabs-indicator': {
+            backgroundColor: '#9563bb',
+          },
           my: 3
         }}
       >
         {renderTabs}
-      </StyledTabs>
+      </Tabs>
       <Container>
         <Box>
           <Typography variant='button' component='div' color="#d8e0f3">{title}</Typography>
@@ -90,7 +89,6 @@ const Work = React.forwardRef((props, refs) => {
           </Button>
         </Box>
       </Container>
-
     </Box >
   );
 });

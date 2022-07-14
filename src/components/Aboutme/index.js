@@ -6,6 +6,7 @@ import Headshot from './Headshot';
 import Skills from './Skills';
 
 const Aboutme = React.forwardRef((props, refs) => {
+
   return (
     <Box
       ref={(el) => { refs.current[0] = el }}

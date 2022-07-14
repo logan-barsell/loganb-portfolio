@@ -38,12 +38,41 @@
       body,
       html {
         background-color: #010c19;
+        height: 100%;
+        margin: 0px !important;
+        color: #34a92c;
+        font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono',
+          monospace !important;
+      }
+
+      @keyframes cursor-blink {
+        0% {
+          opacity: 0;
+        }
+      }
+
+      .loading {
+        margin: 8px;
+        display: flex;
+        align-items: baseline;
+        gap: 3px;
+      }
+
+      .loading::after {
+        content: '';
+        width: 5px;
+        height: 20px;
+        background: #34a92c;
+        display: inline-block;
+        animation: cursor-blink 1.5s steps(2) infinite;
       }
     </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <div class="loading">> Loading application...</div>
+    </div>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
