@@ -16,7 +16,7 @@ const Intro = React.forwardRef(({ scrollEvent }, refs) => {
 
   return (
     <Grow in={!loading} timeout={500}>
-      <Container sx={{ marginTop: '100px', minHeight: '80vh' }}>
+      <Container sx={{ minHeight: '80vh', display: 'grid' }}>
         <Box sx={{ my: 10, px: { sm: 2, xs: 0 } }}>
           <Typography
             sx={{
@@ -24,7 +24,7 @@ const Intro = React.forwardRef(({ scrollEvent }, refs) => {
               fontWeight: 600,
               fontSize: {
                 xs: '50px',
-                sm: '60px',
+                sm: '70px',
                 md: '70px'
               },
               fontVariant: 'all-small-caps',
@@ -40,16 +40,18 @@ const Intro = React.forwardRef(({ scrollEvent }, refs) => {
               color: '#808dcb',
               fontWeight: 600,
               fontSize: {
-                sm: '27px',
-                md: '34px'
-              }
+                xs: '27px',
+                sm: '34px'
+              },
+              lineHeight: '0.9'
+
             }}
             variant="h4"
             component="div">
             Web Developer
           </Typography>
         </Box>
-        <Box sx={{ my: 12, px: { sm: 2, xs: 0 } }}>
+        <Box sx={{ mb: 12, mt: 10, px: { sm: 2, xs: 0 } }}>
           <Typography
             sx={{
               color: '#808dcb',
@@ -72,6 +74,10 @@ const Intro = React.forwardRef(({ scrollEvent }, refs) => {
             color='success'
             sx={{
               color: '#34a92c',
+              fontVariant: 'small-caps',
+              fontWeight: 600,
+              fontSize: '23px',
+              textTransform: 'none',
               margin: {
                 xs: '35px 0px',
                 sm: '35px'

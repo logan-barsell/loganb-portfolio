@@ -10,7 +10,7 @@ const Section = React.forwardRef(({ title, children, domRef }, refs) => {
   const changeFunc = () => {
     setTimeout(() => {
       setVisible(true);
-    }, 500)
+    }, 250)
   }
 
   useEffect(() => {
@@ -25,13 +25,14 @@ const Section = React.forwardRef(({ title, children, domRef }, refs) => {
   return (
     <Box
       className={`fade-in-section ${isVisible ? 'is-visible' : ''}`}
-      sx={{ pt: { xs: 7, sm: 12 }, pb: 4 }}
+      sx={{ pt: { xs: 7, sm: 12 }, pb: 8 }}
     >
       <Divider
         textAlign='left'
         sx={{
           fontVariant: 'small-caps',
           marginBottom: '20px',
+          overflow: 'hidden',
           '&::before, &::after': {
             borderColor: '#d8e0f3'
           }

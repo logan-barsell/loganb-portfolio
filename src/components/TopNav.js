@@ -11,7 +11,7 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
-
+import Link from '@mui/material/Link';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -98,11 +98,14 @@ const TopNav = React.forwardRef((props, refs) => {
         <AppBar component="nav" sx={{ backgroundColor: 'rgb(6, 5, 35, 0.9)' }}>
           <Toolbar sx={{ minHeight: { xs: '50px' } }}>
             <Typography
+              noWrap
               variant="h6"
-              component="div"
               sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'left' }}
             >
-              <img src={logo} height='40px' alt="custom logo" />
+              <Link className="logo" href="/" height='40px'>
+                <img src={logo} height='40px' alt="custom logo" />
+              </Link>
+
             </Typography>
             <Box className="altFont" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {mobileOpen ? null :

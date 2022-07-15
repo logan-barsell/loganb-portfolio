@@ -20,3 +20,15 @@
 .hvr-left:hover {
   transform: translateX(3px);
 }
+
+.logo:hover {
+  transform: translateX(3px);
+  opacity: 0.7;
+}
+
+.logo {
+  -webkit-transition: all 500ms ease !important;
+  -o-transition: all 500ms ease !important;
+  -ms-transition: all 500ms ease !important;
+  transition: all 500ms ease !important;
+}

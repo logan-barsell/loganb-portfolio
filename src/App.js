@@ -20,6 +20,14 @@ const App = () => {
     setLoading(false);
   }, []);
 
+  if (window.history.scrollRestoration) {
+    window.history.scrollRestoration = 'manual';
+  } else {
+    window.onbeforeunload = function () {
+      window.scrollTo(0, 0);
+    }
+  }
+
   const LazyContainer = lazy(() => import('@mui/material/Container'));
 
 
@@ -29,12 +37,12 @@ const App = () => {
         <TopNav ref={refs} scrollEvent={scrollToEl} />
         <Suspense fallback={<Loading />}>
           <LazyContainer>
-            <Box sx={{ my: 10 }}>
+            <Box sx={{ mb: 10, mt: 2 }}>
               <Intro ref={refs} scrollEvent={scrollToEl} />
               <Section title='Who Am I?' domRef={0} ref={refs}>
                 <Aboutme ref={refs} />
               </Section>
-              <Section title='Work Experience' domRef={1} ref={refs}>
+              <Section title='Work History' domRef={1} ref={refs}>
                 <Work ref={refs} />
               </Section>
               <Section title="Portfolio" domRef={2} ref={refs}>

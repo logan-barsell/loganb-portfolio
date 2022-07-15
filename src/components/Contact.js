@@ -38,7 +38,8 @@ const Contact = React.forwardRef((props, refs) => {
             display: 'flex',
             width: 'fit-content',
             color: '#34a92c',
-            margin: '30px auto'
+            margin: '30px auto',
+            textAlign: 'center'
           }}>
           Drop me a line!
         </Button>
