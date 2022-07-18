@@ -55,7 +55,7 @@ const TopNav = React.forwardRef((props, refs) => {
         <IconButton
           aria-label="close drawer"
           color="success"
-          sx={{ mr: 2, color: '#34a92c' }}
+          sx={{ color: '#34a92c' }}
         >
           <FingerprintIcon className='fingerprint' />
         </IconButton>
@@ -96,18 +96,18 @@ const TopNav = React.forwardRef((props, refs) => {
     <Box sx={{ display: 'flex' }}>
       <HideOnScroll>
         <AppBar component="nav" sx={{ backgroundColor: 'rgb(6, 5, 35, 0.9)' }}>
-          <Toolbar sx={{ minHeight: { xs: '50px' } }}>
+          <Toolbar sx={{ minHeight: { xs: '75px' } }}>
             <Typography
               noWrap
               variant="h6"
               sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'left' }}
             >
-              <Link className="logo" href="/" height='40px'>
-                <img src={logo} height='40px' alt="custom logo" />
+              <Link className="logo" href="/" height='60px'>
+                <img src={logo} height='60px' alt="custom logo" />
               </Link>
 
             </Typography>
-            <Box className="altFont" sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Box className="altFont" sx={{ display: { xs: 'none', md: 'block' } }}>
               {mobileOpen ? null :
                 <>
                   {navItems.map((item, index) => (
@@ -136,7 +136,7 @@ const TopNav = React.forwardRef((props, refs) => {
               aria-label="open drawer"
               edge="end"
               onClick={handleDrawerToggle}
-              sx={{ display: { sm: 'none' }, color: '#34a92c' }}
+              sx={{ display: { md: 'none' }, color: '#34a92c' }}
             >
               <FingerprintIcon className='fingerprint' />
             </IconButton>

@@ -16,7 +16,7 @@ const Intro = React.forwardRef(({ scrollEvent }, refs) => {
 
   return (
     <Grow in={!loading} timeout={500}>
-      <Container sx={{ minHeight: '80vh', display: 'grid' }}>
+      <Container sx={{ marginTop: '45px', minHeight: '80vh', display: 'grid' }}>
         <Box sx={{ my: 10, px: { sm: 2, xs: 0 } }}>
           <Typography
             sx={{
