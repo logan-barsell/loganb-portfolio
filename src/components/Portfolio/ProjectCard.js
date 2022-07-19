@@ -56,7 +56,7 @@ const ProjectCard = ({ project }) => {
       <CardMedia
         sx={{ opacity: 0.8, my: 1 }}
         component="img"
-        height="250"
+        height="300"
         image={img}
         alt="Project Thumbnail"
       />

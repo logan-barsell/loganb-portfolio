@@ -1,4 +1,5 @@
-import * as React from 'react';
+import React, { useState, forwardRef } from 'react';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -7,9 +8,14 @@ import ProjectCard from './ProjectCard';
 import { projects } from './projects';
 
 
-const Portfolio = React.forwardRef((props, refs) => {
+const Portfolio = forwardRef((props, refs) => {
+  const theme = createTheme({
+    breakpoints: {
+      values: { xs: 0, sm: 780, md: 900, lg: 1200, xl: 1536 },
+    },
+  });
 
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = useState(1);
 
   const handleChange = (event, value) => {
     setPage(value);
@@ -46,12 +52,14 @@ const Portfolio = React.forwardRef((props, refs) => {
             '.MuiPaginationItem-root.Mui-selected:hover': { backgroundColor: 'rgba(39, 170, 68, 0.4)' }
           }}
         />
-        <Grid
-          container
-          spacing={3}
-        >
-          {renderProjects}
-        </Grid>
+        <ThemeProvider theme={theme}>
+          <Grid
+            container
+            spacing={3}
+          >
+            {renderProjects}
+          </Grid>
+        </ThemeProvider>
       </Box>
     </Container>
   );

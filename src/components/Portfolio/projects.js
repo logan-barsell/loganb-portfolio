@@ -6,6 +6,8 @@ import marketingui from '../../images/portfolio/marketingui-tn.png';
 import fhs from '../../images/portfolio/fhssitetn.png';
 import bcsite from '../../images/portfolio/bcpictn.png';
 import tc6 from '../../images/portfolio/colorsixtn.png';
+import logan1 from '../../images/portfolio/portfoliov1.png';
+import audioplayer from '../../images/portfolio/audioplayer.png';
 
 
 export const projects = [
@@ -123,6 +125,34 @@ export const projects = [
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/barsell-construction',
     link: 'https://the-color-six.herokuapp.com/'
+  },
+  {
+    title: 'Logan Barsell (V1)',
+    type: 'Personal Website',
+    img: logan1,
+    desc: 'Portfolio website for a Web Developer to showcase skills and projects.',
+    buildList: [
+      'HTML, CSS, jQuery',
+      'Bootstrap',
+      'Node.js, Express'
+    ],
+    hosted: 'Heroku',
+    github: 'https://github.com/logan-barsell/portfolio-site',
+    link: 'https://loganbarsell-v1.herokuapp.com/'
+  },
+  {
+    title: 'Custom Audio Player',
+    type: 'React Component',
+    img: audioplayer,
+    desc: 'Dynamic music player with a song list and album art display.',
+    buildList: [
+      'React',
+      'Bootstrap', 'CSS',
+      'React H5 Audio Player'
+    ],
+    hosted: 'Netlify',
+    github: 'https://github.com/logan-barsell/audio-player',
+    link: 'https://audioplayer-react.netlify.app/'
   }
 ];
 
