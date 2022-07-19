@@ -51,7 +51,7 @@ const TopNav = React.forwardRef((props, refs) => {
 
   const drawer = (
     <Box onClickCapture={handleDrawerToggle} sx={{ textAlign: 'center' }}>
-      <Toolbar sx={{ justifyContent: 'end' }}>
+      <Toolbar sx={{ justifyContent: 'end', '&.MuiToolbar-root': { paddingRight: '12px' } }}>
         <IconButton
           aria-label="close drawer"
           color="success"
@@ -61,9 +61,9 @@ const TopNav = React.forwardRef((props, refs) => {
         </IconButton>
       </Toolbar>
       <Divider />
-      <List className="altFont">
+      <List className="altFont" sx={{ mt: '50px' }}>
         {navItems.map((item, index) => (
-          <ListItem key={item} >
+          <ListItem key={item} sx={{ padding: '15px' }}>
             <ListItemButton
               onClick={() => {
                 scrollEvent(index);
@@ -82,7 +82,7 @@ const TopNav = React.forwardRef((props, refs) => {
           color='success'
           sx={{
             color: '#34a92c',
-            marginTop: '35px'
+            marginTop: '50px'
           }}>
           Contact Me
         </Button>
