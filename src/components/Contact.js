@@ -41,7 +41,7 @@ const Contact = React.forwardRef((props, refs) => {
             margin: '30px auto',
             textAlign: 'center'
           }}>
-          Drop me a line
+          Drop me a line!
         </Button>
       </Box>
     </Container>
