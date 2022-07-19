@@ -10,11 +10,12 @@ const Headshot = () => {
     <Box
       className="box"
       sx={{
-        padding: '25px',
-        maxWidth: '100%'
+        padding: '20px',
+        margin: '10px'
       }}>
-      <div className="overlay">
-        <img src={headshot} style={{ maxWidth: '100%', height: '100%', border: '1px solid #34a92c', opacity: 0.8 }} />
+
+      <img src={headshot} style={{ width: '100%', maxWidth: '350px', border: '1px solid #34a92c', opacity: 0.8 }} />
+      <div className="overlay" >
       </div>
     </Box>
   );

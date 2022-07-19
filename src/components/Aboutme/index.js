@@ -13,10 +13,10 @@ const Aboutme = React.forwardRef((props, refs) => {
       sx={{ flexGrow: 1 }}
     >
       <Grid container spacing={2} sx={{ py: 3 }}>
-        <Grid item xs={12} sm={6} md={8}>
+        <Grid item xs={12} sm={6} md={8} >
           <Bio />
         </Grid>
-        <Grid item xs={12} sm={6} md={4} sx={{ display: 'flex', alignItems: 'center' }}>
+        <Grid item xs={12} sm={6} md={4} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Headshot />
         </Grid>
       </Grid>
