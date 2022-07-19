@@ -107,7 +107,7 @@ const TopNav = React.forwardRef((props, refs) => {
               </Link>
 
             </Typography>
-            <Box className="altFont" sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Box className="altFont navItems">
               {mobileOpen ? null :
                 <>
                   {navItems.map((item, index) => (
@@ -132,11 +132,12 @@ const TopNav = React.forwardRef((props, refs) => {
               }
             </Box>
             <IconButton
+              className="menuIcon"
               color="success"
               aria-label="open drawer"
               edge="end"
               onClick={handleDrawerToggle}
-              sx={{ display: { md: 'none' }, color: '#34a92c' }}
+              sx={{ color: '#34a92c' }}
             >
               <FingerprintIcon className='fingerprint' />
             </IconButton>

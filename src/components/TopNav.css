@@ -32,3 +32,22 @@
   -ms-transition: all 500ms ease !important;
   transition: all 500ms ease !important;
 }
+
+/* RESPONSIVE NAVBAR */
+
+.navItems {
+  display: block;
+}
+
+.menuIcon {
+  display: none !important;
+}
+
+@media screen and (max-width: 650px) {
+  .navItems {
+    display: none;
+  }
+  .menuIcon {
+    display: inline-flex !important;
+  }
+}

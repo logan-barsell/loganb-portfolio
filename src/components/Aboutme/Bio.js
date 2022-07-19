@@ -18,7 +18,7 @@ const Bio = () => {
         gutterBottom>
         <strong>My interest</strong> in coding and web development began in 2017
         when I traveled to Amsterdam to study at&nbsp;
-        <Link href="#" color="#34a92c">New York Code &amp; Design Academy</Link>.
+        <Link href="https://www.coursereport.com/schools/new-york-code-design-academy" target="_blank" color="#34a92c">New York Code &amp; Design Academy</Link>.
         There in the Netherlands is where I started to dream my dream,
         and I knew that the life of a developer was for me!
       </Typography>
@@ -28,7 +28,7 @@ const Bio = () => {
         gutterBottom>
         <strong>Today</strong>, I spend my time doing freelance work, staying on the cutting edge
         of technology by enrolling in courses on&nbsp;
-        <Link href="#" color="#34a92c">Udemy</Link>
+        <Link href="https://www.udemy.com/" target="_blank" color="#34a92c">Udemy</Link>
         , and reading up on the latest
         web trends.
       </Typography>

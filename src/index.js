@@ -6,4 +6,7 @@ import App from './App';
 const container = document.getElementById('root');
 const root = ReactDOM.createRoot(container);
 
-root.render(<App />);
+// delayed for loading animation
+setTimeout(() => {
+  root.render(<App />);
+}, 1500);
