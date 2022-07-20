@@ -7,6 +7,7 @@ import fhs from '../../images/portfolio/fhssitetn.png';
 import bcsite from '../../images/portfolio/bcpictn.png';
 import tc6 from '../../images/portfolio/colorsixtn.png';
 import logan1 from '../../images/portfolio/portfoliov1.png';
+import portfolio2 from '../../images/portfolio/portfolio2.png';
 import audioplayer from '../../images/portfolio/audioplayer.png';
 
 
@@ -55,6 +56,20 @@ export const projects = [
     hosted: 'NPM',
     github: 'https://github.com/logan-barsell/jbook',
     link: 'https://github.com/logan-barsell/jbook'
+  },
+  {
+    title: 'Logan Barsell (V2)',
+    type: 'Personal Website',
+    img: portfolio2,
+    desc: 'Portfolio website for a Web Developer to showcase skills and projects.',
+    buildList: [
+      'React, Material UI',
+      'Node.js, Express',
+      'GitHub Actions'
+    ],
+    hosted: 'DigitalOcean',
+    github: 'https://github.com/logan-barsell/loganb-portfolio',
+    link: 'https://loganbarsell.com/'
   },
   {
     title: 'Yes Devil',
@@ -147,7 +162,7 @@ export const projects = [
     desc: 'Dynamic music player with a song list and album art display.',
     buildList: [
       'React',
-      'Bootstrap', 'CSS',
+      'Bootstrap, CSS',
       'React H5 Audio Player'
     ],
     hosted: 'Netlify',
