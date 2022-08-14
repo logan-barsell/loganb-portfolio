@@ -14,7 +14,14 @@ export const workHistory = [
        album cover, lyrics, and links to popular streaming services (built with React)`,
       `Designed and allocated interactive flyers and promotional banners on the site
         for upcoming concerts and events`,
-      `Maintain/update website content to stay current with the bands activity and status`
+      `Maintain/update website content to stay current with the bands activity and status`,
+      `Implemented User Edit functionality, allowing a user to authenticate themselves through Microsoft Azure OAuth 2.0 flow using the band’s email credentials, and continue to the site in “Edit Mode”`,
+      `User can create, edit, or delete Upcoming Shows and Current Members`,
+      `Forms made with React Final Form`,
+      `Image/File Upload with multer`,
+      `Node.js/Express backend, data stored with MongoDB and mongoose`,
+      `CI/CD with GitHub Actions`,
+      `Site hosted on DigitalOcean server block using NGINX reverse proxy, uses PM2 process manager for production Node.js applications`
 
     ],
     link: 'https://yesdevil.com/'
@@ -27,7 +34,11 @@ export const workHistory = [
     summary: [
       `Developed a full responsive website from start to finish using HTML, CSS, JavaScript, and jQuery`,
       `Participated in design and development sessions with client team to understand the requirements`,
-      `Created a custom logo to compliment the brand and company catch phrase`
+      `Created a custom logo to compliment the brand and company catch phrase`,
+      `Google Maps API`,
+      `Images optimized, reducing page load time and improving user experience`,
+      `Organized work flow with GitHub`,
+      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`
     ],
     link: 'https://barsellconstruction.com/'
   },
@@ -41,7 +52,8 @@ export const workHistory = [
        to optimize traffic, increase page views, and enhance site stickiness`,
       `Formulated designs that expanded upon the brand, accenting key focus points of the business model`,
       `Developed a dynamic and interactive website with a comfortable user experience (UX)`,
-      `Wrote maintainable and extensible code, utilizing GitHub to optimize and organize workflow`
+      `Wrote maintainable and extensible code, utilizing GitHub to optimize and organize workflow`,
+      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`
     ],
     link: 'https://www.fawkeshomesolutions.com/'
   },
@@ -56,7 +68,9 @@ export const workHistory = [
       `Created a custom seamless and responsive photo gallery with images of various
        sizes and ratios`,
       `Uses SongKick, a widget that let the user update events from their dashboard and
-      have it update automatically on their website`
+      have it update automatically on their website`,
+      `Organized work flow with GitHub`,
+      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`
     ],
     link: 'https://the-color-six.herokuapp.com/'
   }

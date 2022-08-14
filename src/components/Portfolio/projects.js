@@ -13,6 +13,23 @@ import audioplayer from '../../images/portfolio/audioplayer.png';
 
 export const projects = [
   {
+    title: 'Yes Devil',
+    type: 'Band Website',
+    img: yesdevil,
+    desc: 'Website for a band to showcase music, events, photos, and  videos. Includes an online store to sell merchandise.',
+    buildList: [
+      'React/Redux',
+      'Bootstrap, CSS',
+      'Node.js, Express, MongoDB',
+      'Snipcart API',
+      'Microsoft OAuth Authentication',
+      'GitHub Actions'
+    ],
+    hosted: 'DigitalOcean',
+    github: 'https://github.com/logan-barsell/yesdevil-react',
+    link: 'https://yesdevil.com/'
+  },
+  {
     title: 'iSurveyU',
     type: 'Feedback Application',
     img: isurveyu,
@@ -70,20 +87,6 @@ export const projects = [
     hosted: 'DigitalOcean',
     github: 'https://github.com/logan-barsell/loganb-portfolio',
     link: 'https://loganbarsell.com/'
-  },
-  {
-    title: 'Yes Devil',
-    type: 'Band Website',
-    img: yesdevil,
-    desc: 'Website for a band to showcase music, events, photos, and  videos. Includes an online store to sell merchandise.',
-    buildList: [
-      'React',
-      'Bootstrap, CSS',
-      'Snipcart API'
-    ],
-    hosted: 'DigitalOcean',
-    github: 'https://github.com/logan-barsell/yesdevil-react',
-    link: 'https://yesdevil.com/'
   },
   {
     title: 'Marketing.UI',
