@@ -21,7 +21,7 @@ export const projects = [
       'React/Redux',
       'Bootstrap, CSS',
       'Node.js, Express, MongoDB',
-      'Snipcart API',
+      'Stripe API',
       'Microsoft OAuth Authentication',
       'GitHub Actions'
     ],

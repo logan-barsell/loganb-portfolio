@@ -7,14 +7,12 @@ export const workHistory = [
     summary: [
       `Created an extensive online web application (with React)
        for a band to showcase music, events, photos, videos, and more`,
-      `Implemented dynamic shopping cart functionality using Snipcart,
-        a flexible eCommerce platform`,
-      `Developed reusable React components, and implemented Context for state management`,
+      `Features an online store with dynamic shopping cart functionality and secure payments with the Stripe API`,
+      `Developed reusable React components, using Redux and Context for state management`,
       `Coordinated with client to design a custom interactive audio player with a track list,
        album cover, lyrics, and links to popular streaming services (built with React)`,
       `Designed and allocated interactive flyers and promotional banners on the site
         for upcoming concerts and events`,
-      `Maintain/update website content to stay current with the bands activity and status`,
       `Implemented User Edit functionality, allowing a user to authenticate themselves through Microsoft Azure OAuth 2.0 flow using the band’s email credentials, and continue to the site in “Edit Mode”`,
       `User can create, edit, or delete Upcoming Shows and Current Members`,
       `Forms made with React Final Form`,
