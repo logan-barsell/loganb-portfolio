@@ -1,3 +1,4 @@
+import indiluv from '../../images/portfolio/indiluv.png';
 import isurveyu from '../../images/portfolio/iSurveyU.png';
 import spotifyapp from '../../images/portfolio/spotifyapp-tn.png';
 import jbook from '../../images/portfolio/jsnote-tn.png';
@@ -12,6 +13,23 @@ import audioplayer from '../../images/portfolio/audioplayer.png';
 
 
 export const projects = [
+  {
+    title: 'indiLuv',
+    type: 'eCommerce Website',
+    img: indiluv,
+    desc: 'Online Retail Store with dynamic shopping cart functionality and secure payments with Stripe API',
+    buildList: [
+      'React/Redux',
+      'Styled Components, Material UI',
+      'Node.js, Express, MongoDB',
+      'Stripe API',
+      'Email/Pass Authentication',
+      'Firestore'
+    ],
+    hosted: 'Firebase',
+    github: 'https://github.com/logan-barsell/MERN-eCommerce',
+    link: 'https://indiluv-95c92.web.app/'
+  },
   {
     title: 'Yes Devil',
     type: 'Band Website',

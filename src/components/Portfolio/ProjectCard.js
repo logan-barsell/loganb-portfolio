@@ -11,7 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
+import LinkIcon from '@mui/icons-material/Link';
 
 
 const ExpandMore = styled((props) => {
@@ -47,7 +47,7 @@ const ProjectCard = ({ project }) => {
         sx={{ color: '#d8e0f3', fontWeight: 600, '.MuiCardHeader-title': { fontWeight: 600 }, '.MuiCardHeader-subheader': { color: '#34a92c', opacity: 0.7, fontWeight: 600 } }}
         action={
           <IconButton href={link} target="_blank" aria-label="settings">
-            <AttachFileIcon className="hvr-icon" sx={{ fontSize: '30px', color: '#808dcb' }} />
+            <LinkIcon className="hvr-icon" sx={{ fontSize: '30px', color: '#808dcb' }} />
           </IconButton>
         }
         title={title}
