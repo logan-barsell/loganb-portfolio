@@ -60,7 +60,7 @@ export const projects = [
     ],
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/emaily-app',
-    link: 'https://shielded-scrubland-86500.herokuapp.com/'
+    // link: 'https://shielded-scrubland-86500.herokuapp.com/'
   },
   {
     title: 'Spotify Profile',
@@ -75,7 +75,7 @@ export const projects = [
     ],
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/newline-spotify-app',
-    link: 'https://my-spotify-profile-app.herokuapp.com/'
+    // link: 'https://my-spotify-profile-app.herokuapp.com/'
   },
   {
     title: 'JBook',
@@ -160,7 +160,7 @@ export const projects = [
     ],
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/barsell-construction',
-    link: 'https://the-color-six.herokuapp.com/'
+    // link: 'https://the-color-six.herokuapp.com/'
   },
   {
     title: 'Logan Barsell (V1)',
@@ -174,7 +174,7 @@ export const projects = [
     ],
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/portfolio-site',
-    link: 'https://loganbarsell-v1.herokuapp.com/'
+    // link: 'https://loganbarsell-v1.herokuapp.com/'
   },
   {
     title: 'Custom Audio Player',

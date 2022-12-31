@@ -45,7 +45,7 @@ const ProjectCard = ({ project }) => {
     <Card sx={{ maxWidth: 450, backgroundColor: 'rgba(0, 0, 0, 0.4)', margin: 'auto' }}>
       <CardHeader
         sx={{ color: '#d8e0f3', fontWeight: 600, '.MuiCardHeader-title': { fontWeight: 600 }, '.MuiCardHeader-subheader': { color: '#34a92c', opacity: 0.7, fontWeight: 600 } }}
-        action={
+        action={link &&
           <IconButton href={link} target="_blank" aria-label="settings">
             <LinkIcon className="hvr-icon" sx={{ fontSize: '30px', color: '#808dcb' }} />
           </IconButton>

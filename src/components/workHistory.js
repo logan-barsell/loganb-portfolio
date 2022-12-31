@@ -1,9 +1,25 @@
 export const workHistory = [
   {
-    id: 0,
+    id: 4,
+    title: 'Fullstack Engineer',
+    company: 'Envoy Technologies',
+    dates: 'Oct 2022 - Present',
+    summary: [
+      `Made significant changes to the existing admin portal`,
+      `Sole developer in charge of the creation of a customer-facing portal`,
+      `Development of new user-facing features using React.js`,
+      `Built reusable components and front-end libraries for future use`,
+      `Translation of designs and wireframes into high-quality code`,
+      `Optimization of components for maximum performance across a vast array of web-capable devices and browsers`,
+      `Participation in scrum ceremonies daily to uphold the agile methodology`,
+    ],
+    link: 'https://www.envoythere.com/'
+  },
+  {
+    id: 3,
     title: 'Freelance Web Developer',
     company: 'Yes Devil Band',
-    dates: 'April 2018 - Present',
+    dates: 'Apr 2018 - Sep 2022',
     summary: [
       `Created an extensive online web application (with React)
        for a band to showcase music, events, photos, videos, and more`,
@@ -25,10 +41,10 @@ export const workHistory = [
     link: 'https://yesdevil.com/'
   },
   {
-    id: 1,
+    id: 2,
     title: 'Freelance Web Developer',
     company: 'Barsell Construction',
-    dates: 'July 2017 - Feb 2020',
+    dates: 'Jul 2017 - Feb 2020',
     summary: [
       `Developed a full responsive website from start to finish using HTML, CSS, JavaScript, and jQuery`,
       `Participated in design and development sessions with client team to understand the requirements`,
@@ -41,7 +57,7 @@ export const workHistory = [
     link: 'https://barsellconstruction.com/'
   },
   {
-    id: 2,
+    id: 1,
     title: 'Freelance Web Developer',
     company: 'Fawkes Home Solutions',
     dates: 'Dec 2019 - Jan 2020',
@@ -56,7 +72,7 @@ export const workHistory = [
     link: 'https://www.fawkeshomesolutions.com/'
   },
   {
-    id: 3,
+    id: 0,
     title: 'Freelance Web Developer',
     company: 'The Color Six Band',
     dates: 'May 2019 - Jul 2019',
