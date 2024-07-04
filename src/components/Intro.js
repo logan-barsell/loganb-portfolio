@@ -48,7 +48,7 @@ const Intro = React.forwardRef(({ scrollEvent }, refs) => {
             }}
             variant="h4"
             component="div">
-            Web Developer
+            Full-Stack Developer
           </Typography>
         </Box>
         <Box sx={{ mb: 12, mt: 10, px: { sm: 2, xs: 0 } }}>

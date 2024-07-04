@@ -3,15 +3,19 @@ export const workHistory = [
     id: 4,
     title: 'Fullstack Engineer',
     company: 'Envoy Technologies',
-    dates: 'Oct 2022 - Present',
+    dates: 'Oct 2022 - Jul 2024',
     summary: [
+      ` Assisted with developing and deploying a MVP with a tight deadline`,
       `Made significant changes to the existing admin portal`,
       `Sole developer in charge of the creation of a customer-facing portal`,
       `Development of new user-facing features using React.js`,
       `Built reusable components and front-end libraries for future use`,
+      `API management and new feature implementations (Node.js/Express)`,
+      `API Integrations with third party services`,
       `Translation of designs and wireframes into high-quality code`,
       `Optimization of components for maximum performance across a vast array of web-capable devices and browsers`,
       `Participation in scrum ceremonies daily to uphold the agile methodology`,
+      `Upheld best QA practices with code reviews, unit testing, and maintaining high code standards`
     ],
     link: 'https://www.envoythere.com/'
   },

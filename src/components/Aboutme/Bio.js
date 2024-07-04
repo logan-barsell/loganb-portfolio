@@ -16,7 +16,7 @@ const Bio = () => {
         variant='body1'
         component='div'
         gutterBottom>
-        <strong>My interest</strong> in coding and web development began in 2017
+        <strong>My interest</strong> in coding and software development began in 2017
         when I traveled to Amsterdam to study at&nbsp;
         <Link href="https://www.coursereport.com/schools/new-york-code-design-academy" target="_blank" color="#34a92c">New York Code &amp; Design Academy</Link>.
         There in the Netherlands is where I started to dream my dream,
@@ -26,7 +26,7 @@ const Bio = () => {
         variant='body1'
         component='div'
         gutterBottom>
-        <strong>Today</strong>, I spend my time doing freelance work, staying on the cutting edge
+        <strong>Today</strong>, I spend my time doing contract/freelance work, staying on the cutting edge
         of technology by enrolling in courses on&nbsp;
         <Link href="https://www.udemy.com/" target="_blank" color="#34a92c">Udemy</Link>
         , and reading up on the latest

@@ -14,23 +14,6 @@ import audioplayer from '../../images/portfolio/audioplayer.png';
 
 export const projects = [
   {
-    title: 'indiLuv',
-    type: 'eCommerce Website',
-    img: indiluv,
-    desc: 'Online Retail Store with dynamic shopping cart functionality and secure payments with Stripe API',
-    buildList: [
-      'React/Redux',
-      'Styled Components, Material UI',
-      'Node.js, Express, MongoDB',
-      'Stripe API',
-      'Email/Pass Authentication',
-      'Firestore'
-    ],
-    hosted: 'Firebase',
-    github: 'https://github.com/logan-barsell/MERN-eCommerce',
-    link: 'https://indiluv-95c92.web.app/'
-  },
-  {
     title: 'Yes Devil',
     type: 'Band Website',
     img: yesdevil,
@@ -60,7 +43,6 @@ export const projects = [
     ],
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/emaily-app',
-    // link: 'https://shielded-scrubland-86500.herokuapp.com/'
   },
   {
     title: 'Spotify Profile',
@@ -75,7 +57,6 @@ export const projects = [
     ],
     hosted: 'Heroku',
     github: 'https://github.com/logan-barsell/newline-spotify-app',
-    // link: 'https://my-spotify-profile-app.herokuapp.com/'
   },
   {
     title: 'JBook',
@@ -91,6 +72,23 @@ export const projects = [
     hosted: 'NPM',
     github: 'https://github.com/logan-barsell/jbook',
     link: 'https://github.com/logan-barsell/jbook'
+  },
+  {
+    title: 'indiLuv',
+    type: 'eCommerce Website',
+    img: indiluv,
+    desc: 'Online Retail Store with dynamic shopping cart functionality and secure payments with Stripe API',
+    buildList: [
+      'React/Redux',
+      'Styled Components, Material UI',
+      'Node.js, Express, MongoDB',
+      'Stripe API',
+      'Email/Pass Authentication',
+      'Firestore'
+    ],
+    hosted: 'Firebase',
+    github: 'https://github.com/logan-barsell/MERN-eCommerce',
+    link: 'https://indiluv-95c92.web.app/'
   },
   {
     title: 'Logan Barsell (V2)',

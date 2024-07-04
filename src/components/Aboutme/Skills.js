@@ -34,7 +34,12 @@ const Skills = () => {
         <Typography
           variant='body1'
           component='div'
-        >React/Redux, Node.js, Express, MongoDB
+        >React, Redux, Node.js, Express
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >MongoDB, SQL, MySQL, Redis
         </Typography>
         <Typography
           variant='body1'
