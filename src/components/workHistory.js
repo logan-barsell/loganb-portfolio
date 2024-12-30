@@ -2,6 +2,21 @@ export const workHistory = [
   {
     id: 4,
     title: 'Fullstack Engineer',
+    company: 'CoreCare',
+    dates: 'Oct 2024 - Nov 2024',
+    summary: [
+      `Assisted with the development of a HIPAA-compliant mobile web application for Medicaid and insurance workflow management in long-term care facilities`,
+      `Designed scalable backend architectures optimized for mobile experiences and data integration`,
+      `Implemented secure, HIPAA-compliant solutions ensuring data privacy and protection`,
+      `Collaborated with frontend engineers, Product Management, and UX teams to deliver a high-performance, user-friendly application`,
+      `Optimized application performance and security, focusing on creating an intuitive experience for long-term care professionals`,
+      `Continuously improved codebase, implementing best practices in architecture and deployment using AWS and other cloud technologies`,
+    ],
+    link: 'https://corecare.ai/',
+  },
+  {
+    id: 4,
+    title: 'Fullstack Engineer',
     company: 'Envoy Technologies',
     dates: 'Oct 2022 - Jul 2024',
     summary: [
@@ -15,9 +30,9 @@ export const workHistory = [
       `Translation of designs and wireframes into high-quality code`,
       `Optimization of components for maximum performance across a vast array of web-capable devices and browsers`,
       `Participation in scrum ceremonies daily to uphold the agile methodology`,
-      `Upheld best QA practices with code reviews, unit testing, and maintaining high code standards`
+      `Upheld best QA practices with code reviews, unit testing, and maintaining high code standards`,
     ],
-    link: 'https://www.envoythere.com/'
+    link: 'https://www.envoythere.com/',
   },
   {
     id: 3,
@@ -39,10 +54,9 @@ export const workHistory = [
       `Image/File Upload with multer`,
       `Node.js/Express backend, data stored with MongoDB and mongoose`,
       `CI/CD with GitHub Actions`,
-      `Site hosted on DigitalOcean server block using NGINX reverse proxy, uses PM2 process manager for production Node.js applications`
-
+      `Site hosted on DigitalOcean server block using NGINX reverse proxy, uses PM2 process manager for production Node.js applications`,
     ],
-    link: 'https://yesdevil.com/'
+    link: 'https://yesdevil.com/',
   },
   {
     id: 2,
@@ -56,9 +70,9 @@ export const workHistory = [
       `Google Maps API`,
       `Images optimized, reducing page load time and improving user experience`,
       `Organized work flow with GitHub`,
-      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`
+      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`,
     ],
-    link: 'https://barsellconstruction.com/'
+    link: 'https://barsellconstruction.com/',
   },
   {
     id: 1,
@@ -71,9 +85,9 @@ export const workHistory = [
       `Formulated designs that expanded upon the brand, accenting key focus points of the business model`,
       `Developed a dynamic and interactive website with a comfortable user experience (UX)`,
       `Wrote maintainable and extensible code, utilizing GitHub to optimize and organize workflow`,
-      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`
+      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`,
     ],
-    link: 'https://www.fawkeshomesolutions.com/'
+    link: 'https://www.fawkeshomesolutions.com/',
   },
   {
     id: 0,
@@ -88,10 +102,10 @@ export const workHistory = [
       `Uses SongKick, a widget that let the user update events from their dashboard and
       have it update automatically on their website`,
       `Organized work flow with GitHub`,
-      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`
+      `Configured domain, hosted site on Digital Ocean droplet using Nginx Reverse Proxy`,
     ],
-    link: 'https://the-color-six.herokuapp.com/'
-  }
+    link: 'https://the-color-six.herokuapp.com/',
+  },
 ];
 
 export default { workHistory };

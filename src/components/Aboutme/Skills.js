@@ -8,19 +8,19 @@ import Container from '@mui/material/Container';
 const Skills = () => {
   return (
     <Box
-      className="altFont"
+      className='altFont'
       sx={{
         background: 'rgba(0, 0, 0, 0.4)',
         maxWidth: '500px',
         padding: '20px',
         margin: '10px auto',
-        color: '#34a92c'
+        color: '#34a92c',
       }}
     >
       <Typography
-        className="skills"
-        variant="h5"
-        component="div"
+        className='skills'
+        variant='h5'
+        component='div'
         sx={{ fontWeight: 600 }}
       >
         Skills
@@ -29,27 +29,101 @@ const Skills = () => {
         <Typography
           variant='body1'
           component='div'
-        >HTML, CSS, JavaScript, TypeScript
+        >
+          <b>Frontend:</b>
         </Typography>
         <Typography
           variant='body1'
           component='div'
-        >React, Redux, Node.js, Express
+        >
+          HTML, CSS, JavaScript, TypeScript
         </Typography>
         <Typography
           variant='body1'
           component='div'
-        >MongoDB, SQL, MySQL, Redis
+        >
+          React, Redux, Next.js, Tailwind, Bootstrap
         </Typography>
         <Typography
           variant='body1'
           component='div'
-        >Bootstrap, MaterializeCSS, Material UI, jQuery
+        >
+          MaterializeCSS, Material UI, jQuery
+        </Typography>
+        <br />
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          <b>Backend:</b>
         </Typography>
         <Typography
           variant='body1'
           component='div'
-        >GitHub, CI/CD, Domains, Hosting, DNS Configuration
+        >
+          Node.js, Express, GraphQL, RESTful APIs
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Microservices, MongoDB, MySQL, Postgres
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          SQLite, Redis, Prisma
+        </Typography>
+        <br />
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          <b>Cloud & Hosting:</b>
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Domains, Hosting, DNS Configuration, Docker
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Kubernetes, GitHub, CI/CD, AWS
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Microsoft Azure, Google Cloud Platform
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Firebase, DigitalOcean
+        </Typography>
+        <br />
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          <b>Tools:</b>
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Git, GitHub Actions, Zapier, HubSpot, Cypress
+        </Typography>
+        <Typography
+          variant='body1'
+          component='div'
+        >
+          Jest, Postman, Microfrontends
         </Typography>
       </Container>
     </Box>
