@@ -1,0 +1,29 @@
+[Unit]
+Description=Logan Barsell inquiry API
+After=network.target
+
+[Service]
+Type=simple
+User=loganb-api
+Group=loganb-api
+WorkingDirectory=/var/www/loganbarsell.com/server
+EnvironmentFile=/etc/loganb-api.env
+ExecStart=/usr/bin/node /var/www/loganbarsell.com/server/src/index.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# Practical hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/loganb-api
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=multi-user.target

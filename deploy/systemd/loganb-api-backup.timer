@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly SQLite backup for loganb-api
+Requires=loganb-api-backup.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup loganb-api SQLite database
+
+[Service]
+Type=oneshot
+User=root
+Environment=DATABASE_PATH=/var/lib/loganb-api/inquiries.sqlite
+Environment=BACKUP_DIR=/var/backups/loganb-api
+Environment=BACKUP_KEEP=7
+ExecStart=/var/www/loganbarsell.com/deploy/scripts/backup-sqlite.sh

@@ -7,43 +7,60 @@ import { Link as RouterLink } from 'react-router-dom';
 import Link from '@mui/material/Link';
 import Section from '../components/Section';
 import CtaButton from '../components/CtaButton';
+import FormStatus from '../components/forms/FormStatus';
+import { fieldSx } from '../components/forms/formStyles';
+import { postJson } from '../api/client';
 import { colors } from '../theme/colors';
 
-const fieldSx = {
-  '& .MuiInputBase-root': { color: colors.text },
-  '& .MuiInputLabel-root': { color: colors.muted },
-  '& .MuiInputLabel-root.Mui-focused': { color: colors.green },
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: colors.purple },
-  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: colors.green,
-  },
-  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: colors.green,
-  },
-  '& .MuiOutlinedInput-input:-webkit-autofill': {
-    WebkitBoxShadow: `0 0 0 1000px ${colors.bg} inset`,
-    WebkitTextFillColor: colors.text,
-    caretColor: colors.text,
-    transition: 'background-color 99999s ease-in-out 0s',
-  },
-  '& .MuiOutlinedInput-input:-webkit-autofill:hover': {
-    WebkitBoxShadow: `0 0 0 1000px ${colors.bg} inset`,
-    WebkitTextFillColor: colors.text,
-  },
-  '& .MuiOutlinedInput-input:-webkit-autofill:focus': {
-    WebkitBoxShadow: `0 0 0 1000px ${colors.bg} inset`,
-    WebkitTextFillColor: colors.text,
-  },
+const initialValues = {
+  name: '',
+  email: '',
+  message: '',
+  companyWebsite: '',
 };
 
 const Contact = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
+  const [values, setValues] = useState(initialValues);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [status, setStatus] = useState(null);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const mailtoHref = `mailto:contact@loganbarsell.com?subject=${encodeURIComponent(
-    `General inquiry from ${name || 'website visitor'}`
-  )}&body=${encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`)}`;
+  const updateField = (field) => (event) => {
+    setValues((prev) => ({ ...prev, [field]: event.target.value }));
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (submitting) return;
+
+    setSubmitting(true);
+    setStatus(null);
+    setStatusMessage('');
+    setFieldErrors({});
+
+    try {
+      const result = await postJson('/api/inquiries/contact', values);
+      setStatus('success');
+      setStatusMessage(result.message || 'Thanks — your message was received.');
+      setValues(initialValues);
+    } catch (error) {
+      if (error.details && typeof error.details === 'object') {
+        setFieldErrors(error.details);
+      }
+      setStatus('error');
+      setStatusMessage(error.message || 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Box sx={{ pb: 6 }}>
@@ -60,41 +77,81 @@ const Contact = () => {
           instead—that intake is built for new website work.
         </Typography>
 
-        <Stack spacing={2} sx={{ maxWidth: 560 }}>
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            fullWidth
-            sx={fieldSx}
-          />
-          <TextField
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-            sx={fieldSx}
-          />
-          <TextField
-            label="Message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            fullWidth
-            multiline
-            minRows={4}
-            sx={fieldSx}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-            <CtaButton href={mailtoHref}>Send Message</CtaButton>
-          </Box>
-          <Typography variant="body2" sx={{ color: colors.muted, textAlign: 'center' }}>
-            Or email directly:{' '}
-            <a href="mailto:contact@loganbarsell.com" style={{ color: colors.green }}>
-              contact@loganbarsell.com
-            </a>
-          </Typography>
-        </Stack>
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ maxWidth: 560 }}>
+          <Stack spacing={2}>
+            <TextField
+              label="Name"
+              name="name"
+              value={values.name}
+              onChange={updateField('name')}
+              required
+              fullWidth
+              error={Boolean(fieldErrors.name)}
+              helperText={fieldErrors.name}
+              sx={fieldSx}
+              disabled={submitting}
+            />
+            <TextField
+              label="Email"
+              name="email"
+              type="email"
+              value={values.email}
+              onChange={updateField('email')}
+              required
+              fullWidth
+              error={Boolean(fieldErrors.email)}
+              helperText={fieldErrors.email}
+              sx={fieldSx}
+              disabled={submitting}
+            />
+            <TextField
+              label="Message"
+              name="message"
+              value={values.message}
+              onChange={updateField('message')}
+              required
+              fullWidth
+              multiline
+              minRows={4}
+              error={Boolean(fieldErrors.message)}
+              helperText={fieldErrors.message}
+              sx={fieldSx}
+              disabled={submitting}
+            />
+            <Box
+              aria-hidden="true"
+              sx={{ position: 'absolute', left: '-10000px', height: 0, overflow: 'hidden' }}
+            >
+              <TextField
+                label="Company website"
+                name="companyWebsite"
+                tabIndex={-1}
+                autoComplete="off"
+                value={values.companyWebsite}
+                onChange={updateField('companyWebsite')}
+              />
+            </Box>
+            <FormStatus status={status} message={statusMessage} />
+            <Typography variant="body2" sx={{ color: colors.muted }}>
+              By submitting, you agree to the storage of your inquiry details as described in the{' '}
+              <Link component={RouterLink} to="/privacy" sx={{ color: colors.green }}>
+                Privacy
+              </Link>{' '}
+              page.
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <CtaButton type="submit" disabled={submitting}>
+                {submitting ? 'Sending…' : 'Send Message'}
+              </CtaButton>
+            </Box>
+            <Typography variant="body2" sx={{ color: colors.muted, textAlign: 'center' }}>
+              Or email directly:{' '}
+              <a href="mailto:contact@loganbarsell.com" style={{ color: colors.green }}>
+                contact@loganbarsell.com
+              </a>
+            </Typography>
+          </Stack>
+        </Box>
       </Section>
     </Box>
   );

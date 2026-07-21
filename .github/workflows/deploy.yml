@@ -3,11 +3,9 @@ name: Build & Deploy
 on:
   push:
     branches: [ "main" ]
-    
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -19,8 +17,27 @@ jobs:
         username: ${{secrets.SSH_USERNAME}}
         script_stop: true
         script: |
+          set -euo pipefail
           cd /var/www/loganbarsell.com
           git pull
           npm ci
           npm run build
-          systemctl reload nginx
+          if [ -f /etc/loganb-api.env ]; then
+            set -a
+            # shellcheck disable=SC1091
+            . /etc/loganb-api.env
+            set +a
+          fi
+          cd server
+          npm ci --omit=dev
+          npm run migrate
+          cd ..
+          if systemctl list-unit-files | grep -q '^loganb-api.service'; then
+            sudo systemctl restart loganb-api
+            sleep 2
+            curl -fsS http://127.0.0.1:3001/api/health >/dev/null
+          else
+            echo "loganb-api.service not installed yet; skip API restart"
+          fi
+          sudo nginx -t
+          sudo systemctl reload nginx

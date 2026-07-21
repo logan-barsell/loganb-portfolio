@@ -48,11 +48,15 @@ const CtaButton = ({
     );
   }
 
-  return (
-    <Button href={href} {...sharedProps}>
-      {children}
-    </Button>
-  );
+  if (href) {
+    return (
+      <Button href={href} {...sharedProps}>
+        {children}
+      </Button>
+    );
+  }
+
+  return <Button {...sharedProps}>{children}</Button>;
 };
 
 export default CtaButton;
