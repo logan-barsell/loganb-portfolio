@@ -102,7 +102,8 @@ sudo systemctl reload nginx
 
 ## Deploy flow
 
-GitHub Actions SSHs to the droplet, pulls, builds the CRA app, installs server production dependencies, runs migrations, restarts `loganb-api`, checks `/api/health`, and reloads nginx.
+GitHub Actions SSHs to the droplet, pulls, builds the CRA app, installs server production dependencies, restarts `loganb-api` when the systemd unit exists (migrations run on API startup), checks `/api/health`, and reloads nginx.
+
 
 ## Local development
 

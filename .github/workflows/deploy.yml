@@ -22,17 +22,10 @@ jobs:
           git pull
           npm ci
           npm run build
-          if [ -f /etc/loganb-api.env ]; then
-            set -a
-            # shellcheck disable=SC1091
-            . /etc/loganb-api.env
-            set +a
-          fi
           cd server
           npm ci --omit=dev
-          npm run migrate
           cd ..
-          if systemctl list-unit-files | grep -q '^loganb-api.service'; then
+          if systemctl cat loganb-api.service >/dev/null 2>&1; then
             sudo systemctl restart loganb-api
             sleep 2
             curl -fsS http://127.0.0.1:3001/api/health >/dev/null
