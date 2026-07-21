@@ -13,7 +13,7 @@ import { colors } from '../theme/colors';
 const About = () => {
   return (
     <Box sx={{ pb: 6 }}>
-      <Section title="About Logan">
+      <Section title="About Me">
         <Grid container spacing={4} alignItems="flex-start">
           <Grid item xs={12} md={4}>
             <Headshot />

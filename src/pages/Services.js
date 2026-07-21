@@ -70,8 +70,8 @@ const Services = () => {
                     {service.note}
                   </Typography>
                 ) : null}
-                <CtaButton to={`/start?package=${service.packageSlug}`}>
-                  Start a Project
+                <CtaButton to={service.ctaTo ?? `/start?package=${service.packageSlug}`}>
+                  {service.ctaLabel ?? 'Start a Project'}
                 </CtaButton>
               </Box>
             </Grid>

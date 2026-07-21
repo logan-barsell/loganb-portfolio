@@ -17,8 +17,9 @@ export const services = [
     ],
     outcome:
       'A polished, mobile-friendly website that represents your business professionally and helps customers take action.',
-    priceLabel: 'Starting at $900',
-    packageSlug: 'starter',
+    priceLabel: 'Website packages from $900',
+    ctaLabel: 'View Pricing Options',
+    ctaTo: '/pricing',
   },
   {
     id: 'redesigns',
