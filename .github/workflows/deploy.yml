@@ -26,11 +26,11 @@ jobs:
           npm ci --omit=dev
           cd ..
           if systemctl cat loganb-api.service >/dev/null 2>&1; then
-            sudo systemctl restart loganb-api
+            systemctl restart loganb-api
             sleep 2
             curl -fsS http://127.0.0.1:3001/api/health >/dev/null
           else
             echo "loganb-api.service not installed yet; skip API restart"
           fi
-          sudo nginx -t
-          sudo systemctl reload nginx
+          nginx -t
+          systemctl reload nginx
