@@ -11,7 +11,8 @@ import { colors } from '../theme/colors';
 const packageLabels = {
   ...Object.fromEntries(sitePackages.map((pkg) => [pkg.id, pkg.name])),
   ...Object.fromEntries(hostingPlans.map((plan) => [plan.id, plan.name])),
-  hosting: 'Managed Hosting',
+  hosting: 'Managed Hosting & Support',
+  redesign: 'Website Redesign',
   custom: 'Custom Site',
 };
 

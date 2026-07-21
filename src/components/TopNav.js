@@ -96,9 +96,12 @@ const TopNav = () => {
             <Box
               className="altFont navItems"
               sx={{
-                display: { xs: 'none', xl: 'flex' },
+                display: 'none',
                 alignItems: 'center',
                 gap: 0.5,
+                '@media (min-width: 1100px)': {
+                  display: 'flex',
+                },
               }}
             >
               {primaryNav.map((item) => (
@@ -126,7 +129,10 @@ const TopNav = () => {
               onClick={handleDrawerToggle}
               sx={{
                 color: colors.green,
-                display: { xs: 'inline-flex', xl: 'none' },
+                display: 'inline-flex',
+                '@media (min-width: 1100px)': {
+                  display: 'none',
+                },
               }}
             >
               <FingerprintIcon className="fingerprint" />

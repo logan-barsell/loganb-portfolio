@@ -44,14 +44,24 @@ const Pricing = () => {
                   className="altFont"
                   sx={{ color: colors.green, fontSize: '1.8rem', fontWeight: 600, my: 1.5 }}
                 >
-                  {pkg.price}
+                  {pkg.price}+
                 </Typography>
                 <Typography sx={{ color: colors.muted, mb: 2 }}>{pkg.description}</Typography>
-                <Box component="ul" sx={{ color: colors.muted, pl: 3, flexGrow: 1 }}>
+                <Box component="ul" sx={{ color: colors.muted, pl: 3, mb: 1 }}>
                   {pkg.highlights.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: colors.muted,
+                    mt: 'auto',
+                    pt: 1.5,
+                  }}
+                >
+                  {pkg.helperText}
+                </Typography>
                 <CtaButton to={`/start?package=${pkg.id}`} sx={{ mt: 2, alignSelf: 'flex-start' }}>
                   Start with {pkg.name}
                 </CtaButton>
@@ -61,7 +71,7 @@ const Pricing = () => {
         </Grid>
       </Section>
 
-      <Section title="Managed Hosting">
+      <Section title="Hosting Options">
         <Grid container spacing={3}>
           {hostingPlans.map((plan) => (
             <Grid item xs={12} sm={6} key={plan.id}>
@@ -70,7 +80,9 @@ const Pricing = () => {
                   {plan.name}
                 </Typography>
                 <Typography className="altFont" sx={{ color: colors.green, my: 1, fontWeight: 600 }}>
-                  {plan.price}
+                  {plan.price.includes('/month')
+                    ? plan.price.replace('/month', '+/month')
+                    : plan.price}
                 </Typography>
                 <Typography sx={{ color: colors.muted }}>{plan.description}</Typography>
               </Box>

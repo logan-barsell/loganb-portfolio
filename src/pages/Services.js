@@ -29,11 +29,23 @@ const Services = () => {
                   {service.title}
                 </Typography>
                 <Typography className="altFont" sx={{ color: colors.green, mb: 2 }}>
-                  Starting at {service.startingPrice}
+                  {service.priceLabel}
                 </Typography>
                 <Typography sx={{ color: colors.muted, mb: 2 }}>
                   <strong style={{ color: colors.text }}>Who it is for:</strong> {service.whoFor}
                 </Typography>
+                {service.examples ? (
+                  <>
+                    <Typography sx={{ color: colors.text, fontWeight: 600, mb: 1 }}>
+                      Examples include
+                    </Typography>
+                    <Box component="ul" sx={{ color: colors.muted, mt: 0, mb: 2, pl: 3 }}>
+                      {service.examples.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </Box>
+                  </>
+                ) : null}
                 <Typography sx={{ color: colors.text, fontWeight: 600, mb: 1 }}>
                   What is included
                 </Typography>
@@ -46,6 +58,18 @@ const Services = () => {
                   <strong style={{ color: colors.text }}>Typical outcome:</strong>{' '}
                   {service.outcome}
                 </Typography>
+                {service.note ? (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: colors.muted,
+                      mb: 3,
+                      maxWidth: 760,
+                    }}
+                  >
+                    {service.note}
+                  </Typography>
+                ) : null}
                 <CtaButton to={`/start?package=${service.packageSlug}`}>
                   Start a Project
                 </CtaButton>

@@ -2,60 +2,68 @@ export const sitePackages = [
   {
     id: 'starter',
     name: 'Starter Site',
-    price: '$1,500+',
+    price: '$900',
     description:
-      'A clean, professional website for businesses getting online with a focused set of pages.',
+      'Perfect for businesses getting online with a focused set of core pages.',
     highlights: [
-      'Up to 5 pages',
-      'Mobile-friendly design',
-      'Contact form or call CTAs',
+      'Professional custom website',
+      'Mobile-responsive design',
+      'Essential business pages',
+      'Contact forms and calls-to-action',
       'Basic SEO setup',
-      'Launch and handoff',
+      'Launch support',
     ],
+    helperText: 'Ideal for businesses needing approximately 3–5 core pages.',
   },
   {
     id: 'business',
     name: 'Business Site',
-    price: '$2,500+',
+    price: '$1,500',
     description:
-      'A fuller marketing site with more pages, polish, and conversion-focused structure.',
+      'Perfect for growing businesses that need a stronger online presence and lead generation.',
     highlights: [
-      'Up to 10 pages',
-      'Custom design system',
-      'Services and about sections',
-      'Review or gallery sections',
+      'Custom website design',
+      'Expanded content structure',
+      'Service pages',
+      'Gallery or reviews section',
+      'Multiple calls-to-action',
       'Analytics setup',
+      'SEO-friendly structure',
+      'Launch support',
     ],
+    helperText: 'Ideal for businesses requiring approximately 6–10 pages.',
   },
   {
     id: 'growth',
     name: 'Growth Site',
-    price: '$4,000+',
+    price: '$2,500',
     description:
-      'A higher-capability site with custom features, integrations, or more complex workflows.',
+      'Perfect for businesses needing advanced functionality or more customized solutions.',
     highlights: [
       'Custom functionality',
-      'Integrations and forms',
+      'Third-party integrations',
       'Advanced layouts',
       'Content strategy support',
       'Priority launch support',
     ],
+    helperText: 'Best suited for larger projects requiring custom development.',
   },
 ];
 
 export const hostingPlans = [
   {
     id: 'hosting',
-    name: 'Managed Hosting',
-    price: '$49/month',
-    description: 'Hosting, backups, uptime monitoring, and essential updates.',
+    name: 'Managed Hosting & Support',
+    price: '$39/month',
+    description:
+      'Hosting, backups, uptime monitoring, essential updates, and ongoing technical support.',
   },
   {
-    id: 'hosting-plus',
-    name: 'Managed Hosting Plus',
-    price: '$99/month',
+    id: 'self-hosted',
+    name: 'Self-Hosted Handoff',
+    price: 'Custom Quote',
     description:
-      'Everything in Managed Hosting plus priority support and small monthly content or feature updates.',
+      'Source code and production files delivered to you or deployed to your existing hosting provider. Includes basic configuration and launch assistance.',
   },
 ];
 
@@ -71,9 +79,9 @@ export const pricingFaqs = [
       'Projects typically start with a deposit to begin work, with the balance due before launch. Exact schedule is confirmed in your proposal.',
   },
   {
-    question: 'Do you offer ongoing support?',
+    question: 'Do I have to use your hosting?',
     answer:
-      'Yes. Managed Hosting and Managed Hosting Plus keep your site online and supported after launch.',
+      'No. Managed hosting is optional. I can provide your website’s source code and production files, or help deploy it to your existing hosting provider for a one-time setup fee. Ongoing maintenance and server support are not included with self-hosted websites.',
   },
   {
     question: 'What if I am not sure which package I need?',
