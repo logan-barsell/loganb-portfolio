@@ -1,0 +1,56 @@
+export const experience = [
+  {
+    id: 1,
+    title: 'Web Designer & Developer',
+    company: 'Logan Barsell Web Services',
+    dates: 'Jul 2017 - Present',
+    summary: [
+      'Design, build, and launch custom websites for small businesses—from planning through deployment.',
+      'Offer clear project packages, redesigns, managed hosting, and ongoing technical support.',
+      'Handle branding, responsive development, hosting setup, and one-to-one client communication end to end.',
+      'Help businesses go from no site or an outdated one to a polished, live, supported presence online.',
+    ],
+    link: 'https://loganbarsell.com/',
+  },
+  {
+    id: 2,
+    title: 'Founder & Full-Stack Engineer',
+    company: 'Bandsyte',
+    dates: 'Feb 2025 - Present',
+    summary: [
+      'Designed and built a multi-tenant SaaS platform for independent musicians and bands.',
+      'Owned product planning, frontend and backend development, deployment, and ongoing maintenance.',
+      'Implemented authentication, billing, custom domains, and tenant isolation.',
+      'Manage infrastructure, CI/CD, production deployments, and customer onboarding.',
+    ],
+    link: 'https://bandsyte.com/',
+  },
+  {
+    id: 3,
+    title: 'Fullstack Engineer',
+    company: 'CoreCare',
+    dates: 'Oct 2024 - Nov 2024',
+    summary: [
+      'Assisted with a HIPAA-compliant mobile web application for Medicaid and insurance workflows in long-term care.',
+      'Designed scalable backend architectures optimized for mobile experiences and data integration.',
+      'Collaborated with frontend, product, and UX teams to deliver a high-performance application.',
+      'Improved performance and security using AWS and modern cloud practices.',
+    ],
+    link: 'https://corecare.ai/',
+  },
+  {
+    id: 4,
+    title: 'Fullstack Engineer',
+    company: 'Envoy',
+    dates: 'Oct 2022 - Jul 2024',
+    summary: [
+      'Worked on a development team building and deploying an EV car-sharing platform, improving reservation, payment, and authentication features.',
+      'Led development of a customer-facing portal in React, TypeScript, and Node.js, collaborating with backend engineers and product teams.',
+      'Contributed frontend and backend enhancements to the admin portal to improve usability and operational efficiency.',
+      'Helped build real-time vehicle tracking, keyless entry, and payment flows using Stripe and Google Maps API.',
+      'Integrated third-party services including Twilio, HubSpot, and SendGrid alongside the team.',
+      'Refactored code to TypeScript, fixed bugs, optimized performance, and upheld QA through code reviews and unit testing.',
+    ],
+    link: 'https://www.envoythere.com/',
+  },
+];

@@ -1,0 +1,57 @@
+.skills-snippet__pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.skills-snippet__line {
+  padding-left: 1.1em;
+  text-indent: -0.15em;
+}
+
+.skills-snippet__array {
+  display: inline;
+}
+
+.skills-snippet .token-keyword {
+  color: #9563bb;
+}
+
+.skills-snippet .token-const {
+  color: #d8e0f3;
+  font-weight: 600;
+}
+
+.skills-snippet .token-key {
+  color: #c792ea;
+}
+
+.skills-snippet .token-string {
+  color: #34a92c;
+}
+
+.skills-snippet .token-punct {
+  color: #808dcb;
+}
+
+.skills-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 3px;
+  background: #34a92c;
+  vertical-align: text-bottom;
+  animation: skills-cursor-blink 1.2s steps(2) infinite;
+}
+
+@keyframes skills-cursor-blink {
+  0% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .skills-snippet__line {
+    padding-left: 0.5em;
+  }
+}

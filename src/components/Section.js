@@ -1,60 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import CodeIcon from '@mui/icons-material/Code';
+import { colors } from '../theme/colors';
 
-
-const Section = React.forwardRef(({ title, children, domRef }, refs) => {
+const Section = ({ title, children, id }) => {
+  const ref = useRef(null);
   const [isVisible, setVisible] = useState(false);
-  const changeFunc = () => {
-    setTimeout(() => {
-      setVisible(true);
-    }, 250)
-  }
 
   useEffect(() => {
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => entry.isIntersecting && !isVisible && changeFunc());
+    const element = ref.current;
+    if (!element) return undefined;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => setVisible(true), 250);
+        }
+      });
     });
-    const element = refs.current[domRef];
+
     observer.observe(element);
     return () => observer.unobserve(element);
-  });
+  }, []);
 
   return (
     <Box
+      id={id}
+      ref={ref}
       className={`fade-in-section ${isVisible ? 'is-visible' : ''}`}
-      sx={{ pt: { xs: 7, sm: 12 }, pb: 8 }}
+      sx={{ pt: { xs: 7, sm: 10 }, pb: 6 }}
     >
-      <Divider
-        textAlign='left'
-        sx={{
-          fontVariant: 'small-caps',
-          marginBottom: '20px',
-          overflow: 'hidden',
-          '&::before, &::after': {
-            borderColor: '#d8e0f3'
-          }
-        }}
-      >
-        <Typography
-          variant="h4"
-          componenet="div"
+      {title ? (
+        <Divider
+          textAlign="left"
           sx={{
-            fontWeight: 600,
-            color: ' #d8e0f3',
-            display: 'flex',
-            alignItems: 'center'
+            fontVariant: 'small-caps',
+            marginBottom: '20px',
+            overflow: 'hidden',
+            '&::before, &::after': {
+              borderColor: colors.text,
+            },
           }}
         >
-          <CodeIcon sx={{ fontSize: '50px', color: '#9563bb' }} />
-          {title}
-        </Typography>
-      </Divider>
+          <Typography
+            variant="h4"
+            component="div"
+            sx={{
+              fontWeight: 600,
+              color: colors.text,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <CodeIcon sx={{ fontSize: '50px', color: colors.purple }} />
+            {title}
+          </Typography>
+        </Divider>
+      ) : null}
       {children}
-    </Box >
+    </Box>
   );
-});
+};
 
 export default Section;

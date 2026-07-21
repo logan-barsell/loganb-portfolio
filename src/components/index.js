@@ -1,8 +1,6 @@
-export { default as Intro } from './Intro';
+export { default as TopNav } from './TopNav';
+export { default as SiteFooter } from './SiteFooter';
+export { default as AppLayout } from './AppLayout';
 export { default as Section } from './Section';
-export { default as Aboutme } from './Aboutme';
-export { default as Work } from './Work';
-export { default as Portfolio } from './Portfolio';
-export { default as Contact } from './Contact';
-export { default as BottomNav } from './BottomNav';
+export { default as CtaButton } from './CtaButton';
 export { default as Loading } from './Loading';
