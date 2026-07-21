@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "hash-password": "node scripts/hash-password.js"
   },
   "engines": {
     "node": ">=18"

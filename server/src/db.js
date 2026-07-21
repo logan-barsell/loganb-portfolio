@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const { config } = require('./config');
+const { INQUIRY_STAGES } = require('./constants');
 
 let db;
 
@@ -64,12 +65,12 @@ function insertInquiry(payload) {
       id, type, name, email, message, phone, business_name, package_slug,
       website_goals, current_website, requested_features, inspiration_links,
       domain_info, branding_notes, content_readiness, timeline, budget,
-      notification_status
+      notification_status, stage
     ) VALUES (
       @id, @type, @name, @email, @message, @phone, @business_name, @package_slug,
       @website_goals, @current_website, @requested_features, @inspiration_links,
       @domain_info, @branding_notes, @content_readiness, @timeline, @budget,
-      @notification_status
+      @notification_status, @stage
     )
   `);
 
@@ -92,6 +93,7 @@ function insertInquiry(payload) {
     timeline: payload.timeline ?? null,
     budget: payload.budget ?? null,
     notification_status: payload.notificationStatus || 'pending',
+    stage: payload.stage || 'new',
   });
 }
 
@@ -146,6 +148,132 @@ function getInquiryWithAttachments(id) {
   return { ...inquiry, attachments };
 }
 
+function createSession({ tokenHash, credentialFingerprint, expiresAt }) {
+  getDb()
+    .prepare(
+      `INSERT INTO admin_sessions (token_hash, credential_fingerprint, expires_at)
+       VALUES (?, ?, ?)`
+    )
+    .run(tokenHash, credentialFingerprint, expiresAt);
+}
+
+function getSessionByTokenHash(tokenHash) {
+  return getDb().prepare('SELECT * FROM admin_sessions WHERE token_hash = ?').get(tokenHash);
+}
+
+function touchSession(tokenHash) {
+  getDb()
+    .prepare(
+      `UPDATE admin_sessions
+       SET last_seen_at = datetime('now')
+       WHERE token_hash = ?`
+    )
+    .run(tokenHash);
+}
+
+function deleteSessionByTokenHash(tokenHash) {
+  getDb().prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
+}
+
+function deleteExpiredSessions() {
+  getDb()
+    .prepare(`DELETE FROM admin_sessions WHERE expires_at <= datetime('now')`)
+    .run();
+}
+
+function deleteSessionsByFingerprint(fingerprint) {
+  getDb()
+    .prepare('DELETE FROM admin_sessions WHERE credential_fingerprint = ?')
+    .run(fingerprint);
+}
+
+function escapeLike(value) {
+  return String(value).replace(/([\\%_])/g, '\\$1');
+}
+
+const SORT_COLUMNS = {
+  created_at: 'created_at',
+  name: 'name',
+  package_slug: 'package_slug',
+  stage: 'stage',
+};
+
+function listAdminInquiries({
+  search = '',
+  type = '',
+  stage = '',
+  sort = 'created_at',
+  dir = 'desc',
+  page = 1,
+  pageSize = 20,
+} = {}) {
+  const database = getDb();
+  const where = [];
+  const params = {};
+
+  const q = String(search || '').trim();
+  if (q) {
+    where.push(
+      `(name LIKE @search ESCAPE '\\' OR IFNULL(business_name, '') LIKE @search ESCAPE '\\' OR email LIKE @search ESCAPE '\\')`
+    );
+    params.search = `%${escapeLike(q)}%`;
+  }
+
+  if (type === 'contact' || type === 'project') {
+    where.push('type = @type');
+    params.type = type;
+  }
+
+  if (INQUIRY_STAGES.includes(stage)) {
+    where.push('stage = @stage');
+    params.stage = stage;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const sortColumn = SORT_COLUMNS[sort] || SORT_COLUMNS.created_at;
+  const sortDir = String(dir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePageSize = Math.min(50, Math.max(1, Number(pageSize) || 20));
+  const offset = (safePage - 1) * safePageSize;
+
+  const total = database
+    .prepare(`SELECT COUNT(*) AS count FROM inquiries ${whereSql}`)
+    .get(params).count;
+
+  const rows = database
+    .prepare(
+      `SELECT id, type, name, email, business_name, package_slug, stage, created_at
+       FROM inquiries
+       ${whereSql}
+       ORDER BY ${sortColumn} ${sortDir}, id ${sortDir}
+       LIMIT @limit OFFSET @offset`
+    )
+    .all({ ...params, limit: safePageSize, offset });
+
+  return {
+    rows,
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages: Math.max(1, Math.ceil(total / safePageSize)),
+  };
+}
+
+function getAdminInquiryById(id) {
+  return getInquiryWithAttachments(id);
+}
+
+function getAdminAttachment(inquiryId, attachmentId) {
+  return getDb()
+    .prepare(
+      `SELECT a.*, i.id AS inquiry_exists
+       FROM attachments a
+       INNER JOIN inquiries i ON i.id = a.inquiry_id
+       WHERE a.inquiry_id = ? AND a.id = ?`
+    )
+    .get(inquiryId, attachmentId);
+}
+
 module.exports = {
   getDb,
   closeDb,
@@ -154,4 +282,13 @@ module.exports = {
   insertAttachments,
   updateNotificationStatus,
   getInquiryWithAttachments,
+  createSession,
+  getSessionByTokenHash,
+  touchSession,
+  deleteSessionByTokenHash,
+  deleteExpiredSessions,
+  deleteSessionsByFingerprint,
+  listAdminInquiries,
+  getAdminInquiryById,
+  getAdminAttachment,
 };

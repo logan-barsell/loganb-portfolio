@@ -18,6 +18,24 @@ const PACKAGE_LABELS = {
   'not-sure': 'Not sure',
 };
 
+const INQUIRY_STAGES = [
+  'new',
+  'contacted',
+  'qualified',
+  'proposal_sent',
+  'converted',
+  'closed',
+];
+
+const INQUIRY_STAGE_LABELS = {
+  new: 'New',
+  contacted: 'Contacted',
+  qualified: 'Qualified',
+  proposal_sent: 'Proposal Sent',
+  converted: 'Converted',
+  closed: 'Closed',
+};
+
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -67,6 +85,8 @@ const LIMITS = {
 module.exports = {
   PACKAGE_SLUGS,
   PACKAGE_LABELS,
+  INQUIRY_STAGES,
+  INQUIRY_STAGE_LABELS,
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
   MAX_FILES,
