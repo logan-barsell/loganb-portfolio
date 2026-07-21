@@ -17,9 +17,10 @@ jobs:
         host: ${{secrets.SSH_HOST}}
         key: ${{secrets.SSH_KEY}}
         username: ${{secrets.SSH_USERNAME}}
-        
+        script_stop: true
         script: |
-          cd /var/www/loganbarsell.com/html/loganb-portfolio
+          cd /var/www/loganbarsell.com
           git pull
+          npm ci
           npm run build
-          systemctl restart nginx
+          systemctl reload nginx
