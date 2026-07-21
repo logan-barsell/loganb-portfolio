@@ -22,7 +22,7 @@ const Start = () => {
 
   return (
     <Box sx={{ pb: 6 }}>
-      <Section title="Start Your Website Project">
+      <Section title="Start a Project">
         <Typography sx={{ color: colors.muted, mb: 2, maxWidth: 720 }}>
           Share a few details about your business, goals, and content. You&apos;ll be able to upload
           logos, photos, and supporting files as part of the process.

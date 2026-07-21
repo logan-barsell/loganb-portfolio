@@ -79,7 +79,7 @@ const Pricing = () => {
         </Grid>
       </Section>
 
-      <Section title="Custom estimates & payment">
+      <Section title="Custom Projects">
         <Typography sx={{ color: colors.muted, mb: 3, maxWidth: 720 }}>
           Need something outside these packages? Share your goals and I&apos;ll prepare a custom
           estimate. {paymentScheduleNote}

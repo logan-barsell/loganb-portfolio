@@ -48,7 +48,7 @@ const About = () => {
         </Grid>
       </Section>
 
-      <Section title="Approach to client work">
+      <Section title="My Approach">
         <Typography sx={{ color: colors.muted, maxWidth: 720, mb: 2 }}>
           Keep the process simple: understand your business, propose a clear scope, design and build
           with feedback along the way, then launch and support. No agency layers—just one point of
@@ -60,7 +60,7 @@ const About = () => {
         </Typography>
       </Section>
 
-      <Section title="Skills and technologies">
+      <Section title="Skills & Technologies">
         <SkillsSnippet />
       </Section>
 

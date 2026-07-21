@@ -1,11 +1,9 @@
 import fhs from '../images/portfolio/fhssitetn.png';
-import bcsite from '../images/portfolio/bcpictn.png';
+import barsellConstructionImg from '../images/portfolio/barsellconstruction-og.png';
+import barsellElectricalImg from '../images/portfolio/barsell-electrical-og.png';
 import bandsyteLogo from '../images/portfolio/BANDSYTE_PAGE_LOGO.PNG';
 import envoyLogo from '../images/portfolio/envoy-white-logo.webp';
 import corecareLogo from '../images/portfolio/corecare.webp';
-
-// Screenshot for Barsell Electrical will be added later.
-const placeholderImg = bcsite;
 
 export const workItems = [
   {
@@ -71,7 +69,7 @@ export const workItems = [
       'Deployed with GitHub Actions, DigitalOcean, and Nginx',
     ],
     tech: ['React', 'JavaScript', 'Material UI', 'Emotion', 'CSS', 'GitHub Actions', 'DigitalOcean', 'Nginx'],
-    img: placeholderImg,
+    img: barsellElectricalImg,
     link: 'https://barsellelectrical.com/',
     featured: true,
   },
@@ -97,7 +95,7 @@ export const workItems = [
       'Image optimization for faster loads',
     ],
     tech: ['HTML', 'CSS', 'JavaScript', 'jQuery', 'Materialize CSS', 'DigitalOcean', 'Nginx'],
-    img: bcsite,
+    img: barsellConstructionImg,
     link: 'https://barsellconstruction.com/',
     featured: true,
   },

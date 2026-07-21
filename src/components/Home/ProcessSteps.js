@@ -8,7 +8,7 @@ import { colors } from '../../theme/colors';
 
 const ProcessSteps = () => {
   return (
-    <Section title="How the process works">
+    <Section title="How It Works">
       <Grid container spacing={3}>
         {processSteps.map((step) => (
           <Grid item xs={12} sm={6} key={step.step}>

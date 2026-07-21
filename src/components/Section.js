@@ -52,9 +52,17 @@ const Section = ({ title, children, id }) => {
               color: colors.text,
               display: 'flex',
               alignItems: 'center',
+              whiteSpace: 'nowrap',
+              fontSize: { xs: '1.25rem', sm: '1.75rem', md: '2.125rem' },
             }}
           >
-            <CodeIcon sx={{ fontSize: '50px', color: colors.purple }} />
+            <CodeIcon
+              sx={{
+                fontSize: { xs: '30px', sm: '42px', md: '50px' },
+                color: colors.purple,
+                flexShrink: 0,
+              }}
+            />
             {title}
           </Typography>
         </Divider>

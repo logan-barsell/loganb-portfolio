@@ -9,7 +9,7 @@ import { colors } from '../../theme/colors';
 
 const FeaturedPricing = () => {
   return (
-    <Section title="Simple, transparent starting prices">
+    <Section title="Starting Prices">
       <Typography sx={{ color: colors.muted, mb: 3, maxWidth: 720 }}>
         Every project receives a personalized scope and final proposal.
       </Typography>
