@@ -18,6 +18,7 @@
 !.env.example
 server/.env
 server/.env.*
+server/.admin-local-password
 !server/.env.example
 .env.local
 .env.development.local

@@ -18,7 +18,12 @@ const iconMap = {
   GitHub: GitHubIcon,
 };
 
-const SiteFooter = () => {
+const SiteFooter = ({
+  navItems = footerNav,
+  actionLabel = 'Start a Project',
+  actionTo = '/start',
+  onAction,
+}) => {
   return (
     <Box
       component="footer"
@@ -46,7 +51,7 @@ const SiteFooter = () => {
               Navigate
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-              {footerNav.map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.path}
                   component={RouterLink}
@@ -57,8 +62,8 @@ const SiteFooter = () => {
                   {item.label}
                 </Link>
               ))}
-              <CtaButton to="/start" size="small" sx={{ mt: 1.5 }}>
-                Start a Project
+              <CtaButton to={actionTo} onClick={onAction} size="small" sx={{ mt: 1.5 }}>
+                {actionLabel}
               </CtaButton>
             </Box>
           </Grid>
