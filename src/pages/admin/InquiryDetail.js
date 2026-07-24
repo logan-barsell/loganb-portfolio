@@ -11,13 +11,16 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
+import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
-import FormStatus from '../../components/forms/FormStatus';
 import {
   attachmentDownloadUrl,
   fetchAttachmentPreview,
   fetchInquiry,
+  markInquiryContacted,
 } from '../../api/adminClient';
+import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
 const previewableMimeTypes = new Set([
@@ -62,17 +65,29 @@ function Field({ label, value }) {
   );
 }
 
-function DetailSection({ title, children }) {
+function DetailSection({ title, action, children }) {
   const content = React.Children.toArray(children).filter(Boolean);
-  if (!content.length) return null;
+  if (!content.length && !action) return null;
   return (
     <Box sx={{ mb: 4 }}>
-      <Typography
-        variant="h6"
-        sx={{ color: colors.green, mb: 1.5, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          flexWrap: 'wrap',
+          mb: 1.5,
+        }}
       >
-        {title}
-      </Typography>
+        <Typography
+          variant="h6"
+          sx={{ color: colors.green, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+        >
+          {title}
+        </Typography>
+        {action || null}
+      </Box>
       <Divider sx={{ borderColor: 'rgba(149, 99, 187, 0.35)', mb: 2 }} />
       {content}
     </Box>
@@ -81,23 +96,23 @@ function DetailSection({ title, children }) {
 
 const InquiryDetail = () => {
   const { id } = useParams();
+  const toast = useToast();
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [markingContacted, setMarkingContacted] = useState(false);
   const [preview, setPreview] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      setError('');
       try {
         const data = await fetchInquiry(id);
         if (!cancelled) setInquiry(data.inquiry);
       } catch (err) {
         if (!cancelled) {
           setInquiry(null);
-          setError(err.message || 'Failed to load inquiry.');
+          toast.error(err.message || 'Failed to load inquiry.');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -106,7 +121,7 @@ const InquiryDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, toast]);
 
   const closePreview = () => {
     if (preview?.url) URL.revokeObjectURL(preview.url);
@@ -130,10 +145,11 @@ const InquiryDetail = () => {
       setPreview({
         file,
         loading: false,
-        error: err.message || 'Unable to preview attachment.',
+        error: '',
         url: '',
         text: '',
       });
+      toast.error(err.message || 'Unable to preview attachment.');
     }
   };
 
@@ -144,76 +160,115 @@ const InquiryDetail = () => {
     [preview?.url]
   );
 
+  const handleMarkContacted = async () => {
+    setMarkingContacted(true);
+    try {
+      const data = await markInquiryContacted(id);
+      setInquiry(data.inquiry);
+      toast.success('Marked as contacted.');
+    } catch (err) {
+      toast.error(err.message || 'Unable to mark as contacted.');
+    } finally {
+      setMarkingContacted(false);
+    }
+  };
+
+  const canMarkContacted =
+    inquiry &&
+    inquiry.type === 'contact' &&
+    inquiry.stage === 'new' &&
+    !(inquiry.proposals || []).length;
+
   return (
     <Box sx={{ pb: 4 }}>
-      <Section title="Inquiry Detail">
-        <Button
-          component={RouterLink}
-          to="/admin/inquiries"
-          sx={{ color: colors.muted, textTransform: 'none', mb: 2, px: 0 }}
-        >
-          ← Back to inquiries
-        </Button>
-
+      <Section
+        title="Inquiry Detail"
+        lead={
+          <Button
+            component={RouterLink}
+            to="/admin/inquiries"
+            sx={{ color: colors.muted, textTransform: 'none', px: 0 }}
+          >
+            ← Back to Inquiries
+          </Button>
+        }
+      >
         {loading ? <Typography sx={{ color: colors.muted }}>Loading…</Typography> : null}
-        {error ? <FormStatus status="error" message={error} /> : null}
 
         {inquiry ? (
           <>
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
-              <Chip
-                label={
-                  inquiry.type === 'contact' ? 'Contact' : inquiry.packageLabel || 'Project'
-                }
-                size="small"
-                sx={{
-                  color: colors.purple,
-                  border: `1px solid ${colors.purple}`,
-                  backgroundColor: 'rgba(149, 99, 187, 0.12)',
-                  fontWeight: 600,
-                }}
-              />
-              <Chip
-                label={inquiry.stageLabel}
-                size="small"
-                sx={{
-                  color: colors.green,
-                  border: `1px solid ${colors.green}`,
-                  backgroundColor: colors.greenSoft,
-                  fontWeight: 600,
-                }}
-              />
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 3, flexWrap: 'wrap', gap: 1.5 }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                <Chip
+                  label={inquiryTypeChipLabel(inquiry.type, inquiry.packageLabel, inquiry.packageSlug)}
+                  size="small"
+                  sx={{
+                    color: colors.purple,
+                    border: `1px solid ${colors.purple}`,
+                    backgroundColor: 'rgba(149, 99, 187, 0.12)',
+                    fontWeight: 600,
+                  }}
+                />
+                <Chip
+                  label={resolveStageLabel(inquiry.stage, inquiry.stageLabel)}
+                  size="small"
+                  sx={{
+                    color: colors.green,
+                    border: `1px solid ${colors.green}`,
+                    backgroundColor: colors.greenSoft,
+                    fontWeight: 600,
+                  }}
+                />
+                {canMarkContacted ? (
+                  <CtaButton
+                    size="medium"
+                    secondary
+                    onClick={handleMarkContacted}
+                    disabled={markingContacted}
+                  >
+                    {markingContacted ? 'Saving…' : 'Mark as Contacted'}
+                  </CtaButton>
+                ) : null}
+              </Stack>
+              <Typography sx={{ color: colors.muted, fontSize: 13 }}>
+                Submitted {formatSubmitted(inquiry.createdAt)}
+              </Typography>
             </Stack>
 
             <DetailSection title="Contact">
               <Field label="Name" value={inquiry.name} />
               <Field label="Email" value={inquiry.email} />
               <Field label="Phone" value={inquiry.phone} />
-              <Field label="Business name" value={inquiry.businessName} />
+              <Field label="Business Name" value={inquiry.businessName} />
               <Field label="Message" value={inquiry.message} />
+              {inquiry.clientId ? (
+                <Box sx={{ mb: 2 }}>
+                  <CtaButton to={`/admin/clients/${inquiry.clientId}`} size="medium" secondary>
+                    View Client
+                  </CtaButton>
+                </Box>
+              ) : null}
             </DetailSection>
 
             {inquiry.type === 'project' ? (
               <DetailSection title="Project Requirements">
-                <Field label="Package" value={inquiry.packageLabel} />
-                <Field label="Website goals" value={inquiry.websiteGoals} />
-                <Field label="Current website" value={inquiry.currentWebsite} />
-                <Field label="Requested features" value={inquiry.requestedFeatures} />
-                <Field label="Inspiration links" value={inquiry.inspirationLinks} />
-                <Field label="Domain info" value={inquiry.domainInfo} />
-                <Field label="Branding notes" value={inquiry.brandingNotes} />
-                <Field label="Content readiness" value={inquiry.contentReadiness} />
+                <Field label="Website Goals" value={inquiry.websiteGoals} />
+                <Field label="Current Website" value={inquiry.currentWebsite} />
+                <Field label="Requested Features" value={inquiry.requestedFeatures} />
+                <Field label="Inspiration Links" value={inquiry.inspirationLinks} />
+                <Field label="Domain Info" value={inquiry.domainInfo} />
+                <Field label="Branding Notes" value={inquiry.brandingNotes} />
+                <Field label="Content Readiness" value={inquiry.contentReadiness} />
                 <Field label="Timeline" value={inquiry.timeline} />
                 <Field label="Budget" value={inquiry.budget} />
               </DetailSection>
             ) : null}
-
-            <DetailSection title="Submission Metadata">
-              <Field label="Submitted" value={formatSubmitted(inquiry.createdAt)} />
-              <Field label="Notification status" value={inquiry.notificationStatus} />
-              <Field label="Notification error" value={inquiry.notificationError} />
-              <Field label="Inquiry ID" value={inquiry.id} />
-            </DetailSection>
 
             {inquiry.type === 'project' ? (
               <DetailSection title="Attachments">
@@ -265,6 +320,81 @@ const InquiryDetail = () => {
                 )}
               </DetailSection>
             ) : null}
+
+            <DetailSection title="Proposals">
+              {!inquiry.clientId ? (
+                <Typography
+                  sx={{ color: colors.muted, mb: (inquiry.proposals || []).length ? 2 : 0 }}
+                >
+                  A linked client is required before creating a proposal.
+                </Typography>
+              ) : null}
+              {(inquiry.proposals || []).length === 0 ? (
+                <Typography sx={{ color: colors.muted }}>No proposals yet.</Typography>
+              ) : (
+                <Stack spacing={1.5}>
+                  {inquiry.proposals.map((proposal) => (
+                    <Box
+                      key={proposal.id}
+                      sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1.5,
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        p: 1.5,
+                        borderRadius: 1,
+                        border: `1px solid rgba(149, 99, 187, 0.35)`,
+                        backgroundColor: colors.cardBg,
+                      }}
+                    >
+                      <Box>
+                        <Stack direction="row" spacing={1} sx={{ mb: 0.75, flexWrap: 'wrap' }}>
+                          <Chip
+                            label={proposal.statusLabel}
+                            size="small"
+                            sx={{
+                              color:
+                                proposal.status === 'sent' ? colors.green : colors.purple,
+                              border: `1px solid ${
+                                proposal.status === 'sent' ? colors.green : colors.purple
+                              }`,
+                              backgroundColor:
+                                proposal.status === 'sent'
+                                  ? colors.greenSoft
+                                  : 'rgba(149, 99, 187, 0.12)',
+                              fontWeight: 600,
+                            }}
+                          />
+                        </Stack>
+                        <Typography sx={{ color: colors.muted, fontSize: 13 }}>
+                          {formatSubmitted(proposal.sentAt || proposal.createdAt)}
+                        </Typography>
+                      </Box>
+                      <Button
+                        component={RouterLink}
+                        to={`/admin/proposals/${proposal.id}`}
+                        sx={{ color: colors.green, textTransform: 'none' }}
+                      >
+                        View Proposal
+                      </Button>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </DetailSection>
+
+            {inquiry.clientId && !(inquiry.proposals || []).length ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
+                <CtaButton
+                  to={`/admin/proposals/new?inquiryId=${encodeURIComponent(inquiry.id)}`}
+                  size="large"
+                  sx={{ px: { xs: 3, sm: 5 }, py: 1.25, fontSize: { xs: '1rem', sm: '1.1rem' } }}
+                >
+                  Create a Proposal
+                </CtaButton>
+              </Box>
+            ) : null}
           </>
         ) : null}
       </Section>
@@ -295,7 +425,7 @@ const InquiryDetail = () => {
           <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
             {preview?.file?.originalName || 'Attachment preview'}
           </Typography>
-          <IconButton onClick={closePreview} aria-label="Close preview" sx={{ color: colors.green }}>
+          <IconButton onClick={closePreview} aria-label="Close Preview" sx={{ color: colors.green }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -311,7 +441,6 @@ const InquiryDetail = () => {
           {preview?.loading ? (
             <Typography sx={{ color: colors.muted }}>Loading preview…</Typography>
           ) : null}
-          {preview?.error ? <FormStatus status="error" message={preview.error} /> : null}
           {preview?.url && preview.file.mimeType.startsWith('image/') ? (
             <Box
               component="img"

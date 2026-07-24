@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
+import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -24,6 +25,7 @@ import CtaButton from '../CtaButton';
 import SeoNoIndex from '../SeoNoIndex';
 import SiteFooter from '../SiteFooter';
 import { colors } from '../../theme/colors';
+import useFooterReady from '../../hooks/useFooterReady';
 
 const drawerWidth = 260;
 
@@ -36,6 +38,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const footerReady = useFooterReady();
 
   const handleDrawerToggle = () => setMobileOpen((open) => !open);
 
@@ -68,7 +71,7 @@ const AdminLayout = () => {
   const drawer = (
     <Box onClickCapture={handleDrawerToggle} sx={{ textAlign: 'center' }}>
       <Toolbar sx={{ justifyContent: 'end', '&.MuiToolbar-root': { paddingRight: '12px' } }}>
-        <IconButton aria-label="close drawer" sx={{ color: colors.green }}>
+        <IconButton aria-label="Close Drawer" sx={{ color: colors.green }}>
           <FingerprintIcon className="fingerprint" />
         </IconButton>
       </Toolbar>
@@ -127,7 +130,7 @@ const AdminLayout = () => {
           </Box>
           <IconButton
             className="menuIcon"
-            aria-label="open drawer"
+            aria-label="Open Drawer"
             edge="end"
             onClick={handleDrawerToggle}
             sx={{
@@ -166,12 +169,16 @@ const AdminLayout = () => {
           <Outlet />
         </Container>
       </Box>
-      <SiteFooter
-        navItems={adminNav}
-        actionLabel="Log Out"
-        actionTo={null}
-        onAction={handleLogout}
-      />
+      <Fade in={footerReady} appear timeout={{ enter: 1000, exit: 0 }} unmountOnExit>
+        <Box sx={{ flexShrink: 0 }}>
+          <SiteFooter
+            navItems={adminNav}
+            actionLabel="Log Out"
+            actionTo={null}
+            onAction={handleLogout}
+          />
+        </Box>
+      </Fade>
     </Box>
   );
 };

@@ -79,6 +79,47 @@ export async function fetchInquiry(id) {
   return adminRequest(`/api/admin/inquiries/${encodeURIComponent(id)}`);
 }
 
+export async function markInquiryContacted(id) {
+  return adminRequest(`/api/admin/inquiries/${encodeURIComponent(id)}/mark-contacted`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function fetchClients(params) {
+  return adminRequest(`/api/admin/clients${buildQuery(params)}`);
+}
+
+export async function fetchClient(id) {
+  return adminRequest(`/api/admin/clients/${encodeURIComponent(id)}`);
+}
+
+export async function fetchProposals(params) {
+  return adminRequest(`/api/admin/proposals${buildQuery(params)}`);
+}
+
+export async function fetchProposal(id) {
+  return adminRequest(`/api/admin/proposals/${encodeURIComponent(id)}`);
+}
+
+export async function createProposal(body) {
+  return adminRequest('/api/admin/proposals', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateProposal(id, body) {
+  return adminRequest(`/api/admin/proposals/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchProjects(params) {
+  return adminRequest(`/api/admin/projects${buildQuery(params)}`);
+}
+
 export function attachmentDownloadUrl(inquiryId, attachmentId) {
   return `/api/admin/inquiries/${encodeURIComponent(inquiryId)}/attachments/${encodeURIComponent(
     attachmentId

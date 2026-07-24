@@ -7,11 +7,11 @@ import Section from '../Section';
 import { colors } from '../../theme/colors';
 
 const points = [
-  'Custom design',
-  'Mobile-friendly development',
-  'Clear project pricing',
-  'Managed launch and hosting',
-  'One point of contact from start to finish',
+  'Custom Design',
+  'Mobile-Friendly Development',
+  'Clear Project Pricing',
+  'Managed Launch and Hosting',
+  'One Point of Contact from Start to Finish',
 ];
 
 const ValueProposition = () => {

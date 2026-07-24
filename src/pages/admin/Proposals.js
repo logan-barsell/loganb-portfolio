@@ -23,18 +23,17 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import { fieldSx, selectMenuProps } from '../../components/forms/formStyles';
-import { fetchInquiries } from '../../api/adminClient';
+import { fetchProposals } from '../../api/adminClient';
 import {
-  inquirySortOptions,
-  inquiryStageOptions,
   inquiryTypeChipLabel,
-  inquiryTypeOptions,
+  proposalSortOptions,
+  proposalStatusOptions,
   resolveStageLabel,
 } from '../../data/adminNav';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
-function formatSubmitted(iso) {
+function formatDate(iso) {
   if (!iso) return '—';
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -49,15 +48,54 @@ function formatSubmitted(iso) {
 function readParams(searchParams) {
   return {
     q: searchParams.get('q') || '',
-    type: searchParams.get('type') || '',
-    stage: searchParams.get('stage') || '',
-    sort: searchParams.get('sort') || 'stage',
-    dir: searchParams.get('dir') || 'asc',
+    status: searchParams.get('status') || '',
+    sort: searchParams.get('sort') || 'created_at',
+    dir: searchParams.get('dir') || 'desc',
     page: Number(searchParams.get('page') || 1) || 1,
   };
 }
 
-const Inquiries = () => {
+/** Prefer inquiry pipeline; fall back from local proposal status if API omits stage. */
+function proposalPipelineStage(item) {
+  if (item.inquiryStage) return item.inquiryStage;
+  if (item.status === 'sent') return 'sent_proposal';
+  if (item.status === 'declined') return 'declined_proposal';
+  if (item.status === 'draft') return 'draft_proposal';
+  return null;
+}
+
+const pipelineChip = (item) => {
+  const stage = proposalPipelineStage(item);
+  const label = resolveStageLabel(stage, item.inquiryStageLabel);
+  if (!label) return null;
+  return (
+    <Chip
+      label={label}
+      size="small"
+      sx={{
+        color: colors.green,
+        border: `1px solid ${colors.green}`,
+        backgroundColor: colors.greenSoft,
+        fontWeight: 600,
+      }}
+    />
+  );
+};
+
+const typeChip = (item) => (
+  <Chip
+    label={inquiryTypeChipLabel(item.inquiryType, item.packageLabel, item.packageSlug)}
+    size="small"
+    sx={{
+      color: colors.purple,
+      border: `1px solid ${colors.purple}`,
+      backgroundColor: 'rgba(149, 99, 187, 0.12)',
+      fontWeight: 600,
+    }}
+  />
+);
+
+const Proposals = () => {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useMemo(() => readParams(searchParams), [searchParams]);
@@ -77,10 +115,9 @@ const Inquiries = () => {
       if (resetPage) next.page = 1;
       const sp = new URLSearchParams();
       if (next.q) sp.set('q', next.q);
-      if (next.type) sp.set('type', next.type);
-      if (next.stage) sp.set('stage', next.stage);
-      if (next.sort && next.sort !== 'stage') sp.set('sort', next.sort);
-      if (next.dir && next.dir !== 'asc') sp.set('dir', next.dir);
+      if (next.status) sp.set('status', next.status);
+      if (next.sort && next.sort !== 'created_at') sp.set('sort', next.sort);
+      if (next.dir && next.dir !== 'desc') sp.set('dir', next.dir);
       if (next.page > 1) sp.set('page', String(next.page));
       setSearchParams(sp, { replace: true });
     },
@@ -92,14 +129,14 @@ const Inquiries = () => {
     (async () => {
       setLoading(true);
       try {
-        const data = await fetchInquiries(params);
+        const data = await fetchProposals(params);
         if (cancelled) return;
         setItems(data.items || []);
         setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
       } catch (err) {
         if (cancelled) return;
         setItems([]);
-        toast.error(err.message || 'Failed to load inquiries.');
+        toast.error(err.message || 'Failed to load proposals.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -119,41 +156,15 @@ const Inquiries = () => {
     borderColor: 'rgba(149, 99, 187, 0.25)',
     whiteSpace: 'nowrap',
   };
-
   const centeredCellSx = { ...cellSx, textAlign: 'center' };
-
-  const typeChip = (item) => (
-    <Chip
-      label={inquiryTypeChipLabel(item.type, item.packageLabel, item.packageSlug)}
-      size="small"
-      sx={{
-        color: colors.purple,
-        border: `1px solid ${colors.purple}`,
-        backgroundColor: 'rgba(149, 99, 187, 0.12)',
-        fontWeight: 600,
-      }}
-    />
-  );
-
-  const stageChip = (stage, apiLabel) => (
-    <Chip
-      label={resolveStageLabel(stage, apiLabel)}
-      size="small"
-      sx={{
-        color: colors.green,
-        border: `1px solid ${colors.green}`,
-        backgroundColor: colors.greenSoft,
-        fontWeight: 600,
-      }}
-    />
-  );
+  const actionsCellSx = { ...cellSx, textAlign: 'right', width: '1%' };
 
   return (
     <Box sx={{ pb: 4 }}>
-      <Section title="Inquiries">
+      <Section title="Proposals">
         <Typography sx={{ color: colors.muted, mb: 3, maxWidth: 720 }}>
-          Read-only view of Contact Message and Project Inquiry submissions. Create proposals from
-          inquiry detail when a client is linked.
+          Draft and send scoped offers from linked inquiries. Create a proposal from an inquiry
+          detail page when a client is attached.
         </Typography>
 
         <Box
@@ -166,28 +177,28 @@ const Inquiries = () => {
             gridTemplateColumns: {
               xs: '1fr',
               sm: '1fr 1fr',
-              md: '2fr 1fr 1fr 1fr 1fr auto',
+              md: '2fr 1fr 1fr 1fr auto',
             },
             alignItems: 'center',
           }}
         >
           <TextField
-            label="Search Name, Business, Email"
+            label="Search Client Name, Business, Email"
             value={draftQ}
             onChange={(e) => setDraftQ(e.target.value)}
             sx={fieldSx}
             size="small"
           />
           <FormControl size="small" sx={fieldSx}>
-            <InputLabel id="type-filter-label">Type</InputLabel>
+            <InputLabel id="proposal-status-label">Proposal Status</InputLabel>
             <Select
-              labelId="type-filter-label"
-              label="Type"
-              value={params.type}
+              labelId="proposal-status-label"
+              label="Proposal Status"
+              value={params.status}
               MenuProps={selectMenuProps}
-              onChange={(e) => updateParams({ type: e.target.value }, { resetPage: true })}
+              onChange={(e) => updateParams({ status: e.target.value }, { resetPage: true })}
             >
-              {inquiryTypeOptions.map((opt) => (
+              {proposalStatusOptions.map((opt) => (
                 <MenuItem key={opt.value || 'all'} value={opt.value}>
                   {opt.label}
                 </MenuItem>
@@ -195,31 +206,15 @@ const Inquiries = () => {
             </Select>
           </FormControl>
           <FormControl size="small" sx={fieldSx}>
-            <InputLabel id="stage-filter-label">Stage</InputLabel>
+            <InputLabel id="proposal-sort-label">Sort</InputLabel>
             <Select
-              labelId="stage-filter-label"
-              label="Stage"
-              value={params.stage}
-              MenuProps={selectMenuProps}
-              onChange={(e) => updateParams({ stage: e.target.value }, { resetPage: true })}
-            >
-              {inquiryStageOptions.map((opt) => (
-                <MenuItem key={opt.value || 'all'} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={fieldSx}>
-            <InputLabel id="sort-filter-label">Sort</InputLabel>
-            <Select
-              labelId="sort-filter-label"
+              labelId="proposal-sort-label"
               label="Sort"
               value={params.sort}
               MenuProps={selectMenuProps}
               onChange={(e) => updateParams({ sort: e.target.value }, { resetPage: true })}
             >
-              {inquirySortOptions.map((opt) => (
+              {proposalSortOptions.map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </MenuItem>
@@ -227,16 +222,16 @@ const Inquiries = () => {
             </Select>
           </FormControl>
           <FormControl size="small" sx={fieldSx}>
-            <InputLabel id="dir-filter-label">Direction</InputLabel>
+            <InputLabel id="proposal-dir-label">Direction</InputLabel>
             <Select
-              labelId="dir-filter-label"
+              labelId="proposal-dir-label"
               label="Direction"
               value={params.dir}
               MenuProps={selectMenuProps}
               onChange={(e) => updateParams({ dir: e.target.value }, { resetPage: true })}
             >
-              <MenuItem value="desc">Desc</MenuItem>
               <MenuItem value="asc">Asc</MenuItem>
+              <MenuItem value="desc">Desc</MenuItem>
             </Select>
           </FormControl>
           <CtaButton type="submit" size="medium" sx={{ height: 40 }}>
@@ -244,11 +239,9 @@ const Inquiries = () => {
           </CtaButton>
         </Box>
 
-        {loading ? (
-          <Typography sx={{ color: colors.muted }}>Loading inquiries…</Typography>
-        ) : null}
+        {loading ? <Typography sx={{ color: colors.muted }}>Loading proposals…</Typography> : null}
         {!loading && items.length === 0 ? (
-          <Typography sx={{ color: colors.muted }}>No inquiries match these filters.</Typography>
+          <Typography sx={{ color: colors.muted }}>No proposals match these filters.</Typography>
         ) : null}
 
         {!loading && items.length > 0 && isCompact ? (
@@ -262,25 +255,22 @@ const Inquiries = () => {
                 }}
               >
                 <CardContent>
-                  <Typography sx={{ color: colors.text, fontWeight: 600 }}>{item.name}</Typography>
-                  {item.businessName ? (
-                    <Typography sx={{ color: colors.muted, fontSize: 14 }}>
-                      {item.businessName}
-                    </Typography>
-                  ) : null}
-                  <Typography sx={{ color: colors.muted, fontSize: 14 }}>
-                    {item.email}
-                  </Typography>
-                  <Typography sx={{ color: colors.muted, fontSize: 14, mt: 1 }}>
-                    {formatSubmitted(item.createdAt)}
-                  </Typography>
-                  <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap' }}>
                     {typeChip(item)}
-                    {stageChip(item.stage, item.stageLabel)}
+                    {pipelineChip(item)}
                   </Stack>
+                  <Typography sx={{ color: colors.text, fontWeight: 600 }}>
+                    {item.clientName}
+                  </Typography>
+                  <Typography sx={{ color: colors.muted, fontSize: 14 }}>
+                    {item.clientBusinessName || item.clientEmail} · {item.designAmountLabel}
+                  </Typography>
+                  <Typography sx={{ color: colors.muted, fontSize: 13, mt: 0.5 }}>
+                    {item.sentAt ? `Sent ${formatDate(item.sentAt)}` : `Created ${formatDate(item.createdAt)}`}
+                  </Typography>
                   <Button
                     component={RouterLink}
-                    to={`/admin/inquiries/${item.id}`}
+                    to={`/admin/proposals/${item.id}`}
                     sx={{ mt: 1.5, color: colors.green, textTransform: 'none', px: 0 }}
                   >
                     View Details
@@ -299,14 +289,18 @@ const Inquiries = () => {
               overflowX: 'auto',
             }}
           >
-            <Table size="small" sx={{ minWidth: 860 }}>
+            <Table size="small" sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow>
-                  {['Name', 'Email', 'Type', 'Stage', 'Submitted', ''].map((label) => (
+                  {['Client', 'Type', 'Stage', 'Design', 'Sent / Created', ''].map((label) => (
                     <TableCell
                       key={label || 'actions'}
                       sx={{
-                        ...(label === 'Type' || label === 'Stage' ? centeredCellSx : cellSx),
+                        ...(label === ''
+                          ? actionsCellSx
+                          : ['Type', 'Stage'].includes(label)
+                            ? centeredCellSx
+                            : cellSx),
                         color: colors.purple,
                         fontWeight: 700,
                       }}
@@ -321,24 +315,24 @@ const Inquiries = () => {
                   <TableRow key={item.id} hover>
                     <TableCell sx={cellSx}>
                       <Typography sx={{ color: colors.text, fontWeight: 600 }}>
-                        {item.name}
+                        {item.clientName}
                       </Typography>
-                      {item.businessName ? (
-                        <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-                          {item.businessName}
-                        </Typography>
-                      ) : null}
+                      <Typography sx={{ color: colors.muted, fontSize: 13 }}>
+                        {item.clientBusinessName || item.clientEmail}
+                      </Typography>
                     </TableCell>
-                    <TableCell sx={cellSx}>{item.email}</TableCell>
                     <TableCell sx={centeredCellSx}>{typeChip(item)}</TableCell>
                     <TableCell sx={centeredCellSx}>
-                      {stageChip(item.stage, item.stageLabel)}
+                      {pipelineChip(item) || '—'}
                     </TableCell>
-                    <TableCell sx={cellSx}>{formatSubmitted(item.createdAt)}</TableCell>
+                    <TableCell sx={cellSx}>{item.designAmountLabel}</TableCell>
                     <TableCell sx={cellSx}>
+                      {item.sentAt ? formatDate(item.sentAt) : formatDate(item.createdAt)}
+                    </TableCell>
+                    <TableCell sx={actionsCellSx}>
                       <Button
                         component={RouterLink}
-                        to={`/admin/inquiries/${item.id}`}
+                        to={`/admin/proposals/${item.id}`}
                         size="small"
                         sx={{ color: colors.green, textTransform: 'none' }}
                       >
@@ -380,4 +374,4 @@ const Inquiries = () => {
   );
 };
 
-export default Inquiries;
+export default Proposals;

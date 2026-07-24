@@ -2,8 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { config } = require('../config');
-const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS } = require('../constants');
-const { listAdminInquiries, getAdminInquiryById, getAdminAttachment } = require('../db');
+const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS } = require('../constants');
+const {
+  listAdminInquiries,
+  getAdminInquiryById,
+  getAdminAttachment,
+  listProposalsByInquiryId,
+  markInquiryContacted,
+  getInquiryWithAttachments,
+} = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { setNoStore } = require('../auth/cookies');
 const { createHttpError } = require('../utils/normalize');
@@ -51,6 +58,16 @@ function mapAttachmentMeta(row) {
 }
 
 function mapInquiryDetail(row) {
+  const proposals = listProposalsByInquiryId(row.id).map((p) => ({
+    id: p.id,
+    status: p.status,
+    statusLabel: PROPOSAL_STATUS_LABELS[p.status] || p.status,
+    designAmountCents: p.design_amount_cents,
+    currency: p.currency,
+    sentAt: toIsoUtc(p.sent_at),
+    createdAt: toIsoUtc(p.created_at),
+  }));
+
   return {
     id: row.id,
     type: row.type,
@@ -75,6 +92,8 @@ function mapInquiryDetail(row) {
     notificationStatus: row.notification_status,
     notificationError: row.notification_error,
     createdAt: toIsoUtc(row.created_at),
+    clientId: row.client_id || null,
+    proposals,
     attachments: (row.attachments || []).map(mapAttachmentMeta),
   };
 }
@@ -109,8 +128,8 @@ router.get('/', (req, res, next) => {
       search: req.query.q || '',
       type: req.query.type || '',
       stage: req.query.stage || '',
-      sort: req.query.sort || 'created_at',
-      dir: req.query.dir || 'desc',
+      sort: req.query.sort || 'stage',
+      dir: req.query.dir || 'asc',
       page: req.query.page || 1,
       pageSize: 20,
     });
@@ -133,6 +152,19 @@ router.get('/', (req, res, next) => {
 router.get('/:id', (req, res, next) => {
   try {
     const inquiry = getAdminInquiryById(req.params.id);
+    if (!inquiry) {
+      throw createHttpError(404, 'Inquiry not found.', 'NOT_FOUND');
+    }
+    return res.status(200).json({ ok: true, inquiry: mapInquiryDetail(inquiry) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/:id/mark-contacted', (req, res, next) => {
+  try {
+    markInquiryContacted(req.params.id);
+    const inquiry = getInquiryWithAttachments(req.params.id);
     if (!inquiry) {
       throw createHttpError(404, 'Inquiry not found.', 'NOT_FOUND');
     }

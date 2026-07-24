@@ -36,7 +36,7 @@ const ExperienceTabs = () => {
         variant="scrollable"
         scrollButtons
         allowScrollButtonsMobile
-        aria-label="Work experience"
+        aria-label="Work Experience"
         sx={{
           [`& .${tabsClasses.scrollButtons}`]: {
             '&.Mui-disabled': { opacity: 0.3 },

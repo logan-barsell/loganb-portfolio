@@ -64,11 +64,11 @@ const About = () => {
         <SkillsSnippet />
       </Section>
 
-      <Section title="Work history">
+      <Section title="Work History">
         <ExperienceTabs />
       </Section>
 
-      <Section title="Working style">
+      <Section title="Working Style">
         <Typography sx={{ color: colors.muted, maxWidth: 720, mb: 1 }}>
           Direct communication, transparent pricing, and practical recommendations. I would rather
           ship something useful on time than overcomplicate the stack.

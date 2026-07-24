@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography';
 import CodeIcon from '@mui/icons-material/Code';
 import { colors } from '../theme/colors';
 
-const Section = ({ title, children, id }) => {
+const Section = ({ title, children, id, lead }) => {
   const ref = useRef(null);
   const [isVisible, setVisible] = useState(false);
 
@@ -30,8 +30,14 @@ const Section = ({ title, children, id }) => {
       id={id}
       ref={ref}
       className={`fade-in-section ${isVisible ? 'is-visible' : ''}`}
-      sx={{ pt: { xs: 7, sm: 10 }, pb: 6 }}
+      sx={{
+        // Back links add their own height; use less top padding so the title
+        // lines up with pages that have no lead.
+        pt: lead ? { xs: 1, sm: 3 } : { xs: 7, sm: 10 },
+        pb: 6,
+      }}
     >
+      {lead ? <Box sx={{ mb: 2 }}>{lead}</Box> : null}
       {title ? (
         <Divider
           textAlign="left"

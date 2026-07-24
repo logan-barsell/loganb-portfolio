@@ -1,7 +1,7 @@
 export const sitePackages = [
   {
     id: 'starter',
-    name: 'Starter',
+    name: 'Starter Site',
     price: '$900',
     description:
       'Perfect for businesses getting online with a focused set of core pages.',
@@ -17,7 +17,7 @@ export const sitePackages = [
   },
   {
     id: 'business',
-    name: 'Standard',
+    name: 'Standard Site',
     price: '$1,500',
     description:
       'Perfect for growing businesses that need a stronger online presence and lead generation.',
@@ -35,7 +35,7 @@ export const sitePackages = [
   },
   {
     id: 'growth',
-    name: 'Premium',
+    name: 'Premium Site',
     price: '$2,500',
     description:
       'Perfect for businesses needing advanced functionality or more customized solutions.',

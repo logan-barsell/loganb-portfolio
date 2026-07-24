@@ -9,31 +9,81 @@ const PACKAGE_SLUGS = [
 ];
 
 const PACKAGE_LABELS = {
-  starter: 'Starter',
-  business: 'Standard',
-  growth: 'Premium',
+  starter: 'Starter Site',
+  business: 'Standard Site',
+  growth: 'Premium Site',
   hosting: 'Managed Hosting & Support',
   redesign: 'Website Redesign',
   custom: 'Custom Site',
-  'not-sure': 'Not sure',
+  'not-sure': 'Not Sure Yet',
 };
 
+/** Canonical inquiry pipeline (cached on inquiries.stage). */
 const INQUIRY_STAGES = [
   'new',
   'contacted',
-  'qualified',
-  'proposal_sent',
-  'converted',
-  'closed',
+  'draft_proposal',
+  'sent_proposal',
+  'declined_proposal',
+  'active_project',
+  'on_hold_project',
+  'completed_project',
+  'cancelled_project',
 ];
 
 const INQUIRY_STAGE_LABELS = {
-  new: 'New',
+  new: 'New Inquiry',
   contacted: 'Contacted',
-  qualified: 'Qualified',
-  proposal_sent: 'Proposal Sent',
-  converted: 'Converted',
-  closed: 'Closed',
+  draft_proposal: 'Drafted Proposal',
+  sent_proposal: 'Sent Proposal',
+  declined_proposal: 'Declined Proposal',
+  active_project: 'Active Project',
+  on_hold_project: 'On Hold Project',
+  completed_project: 'Completed Project',
+  cancelled_project: 'Cancelled Project',
+};
+
+/** Lower rank sorts first on the inquiries list. */
+const PIPELINE_SORT_ORDER = {
+  new: 0,
+  contacted: 1,
+  draft_proposal: 2,
+  sent_proposal: 3,
+  declined_proposal: 4,
+  active_project: 5,
+  on_hold_project: 6,
+  completed_project: 7,
+  cancelled_project: 8,
+};
+
+const PROPOSAL_STATUSES = ['draft', 'sent', 'declined'];
+
+const PROPOSAL_STATUS_LABELS = {
+  draft: 'Draft',
+  sent: 'Sent',
+  declined: 'Declined',
+};
+
+const PROPOSAL_STATUS_TO_PIPELINE = {
+  draft: 'draft_proposal',
+  sent: 'sent_proposal',
+  declined: 'declined_proposal',
+};
+
+const PROJECT_STATUSES = ['active', 'on_hold', 'completed', 'cancelled'];
+
+const PROJECT_STATUS_LABELS = {
+  active: 'Active',
+  on_hold: 'On Hold',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+const PROJECT_STATUS_TO_PIPELINE = {
+  active: 'active_project',
+  on_hold: 'on_hold_project',
+  completed: 'completed_project',
+  cancelled: 'cancelled_project',
 };
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -80,6 +130,13 @@ const LIMITS = {
   budget: 80,
   packageSlug: 40,
   honeypot: 200,
+  proposalSummary: 4000,
+  proposalScope: 8000,
+  proposalDeliverables: 8000,
+  proposalExclusions: 4000,
+  proposalTimeline: 2000,
+  proposalPaymentTerms: 4000,
+  proposalRevisionLimit: 200,
 };
 
 module.exports = {
@@ -87,6 +144,13 @@ module.exports = {
   PACKAGE_LABELS,
   INQUIRY_STAGES,
   INQUIRY_STAGE_LABELS,
+  PIPELINE_SORT_ORDER,
+  PROPOSAL_STATUSES,
+  PROPOSAL_STATUS_LABELS,
+  PROPOSAL_STATUS_TO_PIPELINE,
+  PROJECT_STATUSES,
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_TO_PIPELINE,
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
   MAX_FILES,

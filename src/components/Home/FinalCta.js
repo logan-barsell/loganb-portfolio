@@ -33,7 +33,7 @@ const FinalCta = () => {
           alignItems="center"
         >
           <CtaButton to="/start">Start a Project</CtaButton>
-          <CtaButton secondary to="/contact">Have a question? Contact Me</CtaButton>
+          <CtaButton secondary to="/contact">Have a Question? Contact Me</CtaButton>
         </Stack>
       </Box>
     </Section>

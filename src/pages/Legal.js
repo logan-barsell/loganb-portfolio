@@ -18,7 +18,7 @@ export const Privacy = () => {
           </Typography>
 
           <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600 }}>
-            What is collected
+            What Is Collected
           </Typography>
           <Typography sx={paragraphSx}>
             Contact submissions may include your name, email address, and message. Project intake
@@ -29,7 +29,7 @@ export const Privacy = () => {
           </Typography>
 
           <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600 }}>
-            How it is used
+            How It Is Used
           </Typography>
           <Typography sx={paragraphSx}>
             Submitted information is used only to respond to your inquiry, prepare proposals, and
@@ -37,7 +37,7 @@ export const Privacy = () => {
           </Typography>
 
           <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600 }}>
-            Storage and email delivery
+            Storage and Email Delivery
           </Typography>
           <Typography sx={paragraphSx}>
             Inquiries are stored in a private database on the hosting server used for this website.
@@ -51,7 +51,7 @@ export const Privacy = () => {
           </Typography>
 
           <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600 }}>
-            Access and retention
+            Access and Retention
           </Typography>
           <Typography sx={paragraphSx}>
             Inquiry data is accessible to Logan Barsell for business follow-up. Records and files
@@ -60,7 +60,7 @@ export const Privacy = () => {
           </Typography>
 
           <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600 }}>
-            Deletion requests
+            Deletion Requests
           </Typography>
           <Typography sx={paragraphSx}>
             To request deletion of an inquiry or uploaded files, email{' '}

@@ -5,6 +5,9 @@ const healthRouter = require('./routes/health');
 const inquiriesRouter = require('./routes/inquiries');
 const authRouter = require('./routes/auth');
 const adminInquiriesRouter = require('./routes/adminInquiries');
+const adminClientsRouter = require('./routes/adminClients');
+const adminProposalsRouter = require('./routes/adminProposals');
+const adminProjectsRouter = require('./routes/adminProjects');
 const { errorHandler } = require('./middleware/errorHandler');
 
 function createApp() {
@@ -27,6 +30,9 @@ function createApp() {
   app.use('/api', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/admin/inquiries', adminInquiriesRouter);
+  app.use('/api/admin/clients', adminClientsRouter);
+  app.use('/api/admin/proposals', adminProposalsRouter);
+  app.use('/api/admin/projects', adminProjectsRouter);
   app.use('/api/inquiries', inquiriesRouter);
 
   app.use((_req, res) => {

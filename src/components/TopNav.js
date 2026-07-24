@@ -45,7 +45,7 @@ const TopNav = () => {
   const drawer = (
     <Box onClickCapture={handleDrawerToggle} sx={{ textAlign: 'center' }}>
       <Toolbar sx={{ justifyContent: 'end', '&.MuiToolbar-root': { paddingRight: '12px' } }}>
-        <IconButton aria-label="close drawer" sx={{ color: colors.green }}>
+        <IconButton aria-label="Close Drawer" sx={{ color: colors.green }}>
           <FingerprintIcon className="fingerprint" />
         </IconButton>
       </Toolbar>
@@ -124,7 +124,7 @@ const TopNav = () => {
             </Box>
             <IconButton
               className="menuIcon"
-              aria-label="open drawer"
+              aria-label="Open Drawer"
               edge="end"
               onClick={handleDrawerToggle}
               sx={{

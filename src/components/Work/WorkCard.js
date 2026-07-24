@@ -60,7 +60,7 @@ const WorkCard = ({ item }) => {
         }}
         action={
           link ? (
-            <IconButton href={link} target="_blank" rel="noopener noreferrer" aria-label="Visit project">
+            <IconButton href={link} target="_blank" rel="noopener noreferrer" aria-label="Visit Project">
               <LinkIcon className="hvr-icon" sx={{ fontSize: '30px', color: colors.muted }} />
             </IconButton>
           ) : null
@@ -121,7 +121,7 @@ const WorkCard = ({ item }) => {
           expand={expanded}
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          aria-label="show more"
+          aria-label="Show More"
         >
           <ExpandMoreIcon sx={{ fontSize: '30px', color: colors.text }} />
         </ExpandMore>

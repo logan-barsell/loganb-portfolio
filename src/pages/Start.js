@@ -10,7 +10,6 @@ import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import Link from '@mui/material/Link';
 import Section from '../components/Section';
 import CtaButton from '../components/CtaButton';
-import FormStatus from '../components/forms/FormStatus';
 import { fieldSx, selectMenuProps } from '../components/forms/formStyles';
 import { postFormData } from '../api/client';
 import {
@@ -20,6 +19,7 @@ import {
   budgetOptions,
   contentReadinessOptions,
 } from '../data/intakeOptions';
+import { useToast } from '../toast/ToastProvider';
 import { colors } from '../theme/colors';
 
 const MAX_FILES = 5;
@@ -53,6 +53,7 @@ const formatFileSize = (bytes) => {
 };
 
 const Start = () => {
+  const toast = useToast();
   const [params] = useSearchParams();
   const fileInputRef = useRef(null);
   const packageFromUrl = params.get('package');
@@ -67,8 +68,6 @@ const Start = () => {
   const [files, setFiles] = useState([]);
   const [fileError, setFileError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
-  const [status, setStatus] = useState(null);
-  const [statusMessage, setStatusMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const selectedLabel = useMemo(
@@ -139,8 +138,6 @@ const Start = () => {
     if (submitting) return;
 
     setSubmitting(true);
-    setStatus(null);
-    setStatusMessage('');
     setFieldErrors({});
     setFileError('');
 
@@ -152,8 +149,7 @@ const Start = () => {
       files.forEach((file) => formData.append('files', file));
 
       const result = await postFormData('/api/inquiries/project', formData);
-      setStatus('success');
-      setStatusMessage(result.message || 'Thanks — your project inquiry was received.');
+      toast.success(result.message || 'Thanks — your project inquiry was received.');
       setValues({ ...initialValues, packageSlug: validPackage });
       setFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -162,8 +158,7 @@ const Start = () => {
       if (error.details && typeof error.details === 'object') {
         setFieldErrors(error.details);
       }
-      setStatus('error');
-      setStatusMessage(error.message || 'Something went wrong. Please try again.');
+      toast.error(error.message || 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -186,11 +181,11 @@ const Start = () => {
           <Stack spacing={3}>
             <Box>
               <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600, mb: 2 }}>
-                Contact &amp; business
+                Contact &amp; Business
               </Typography>
               <Stack spacing={2}>
                 <TextField
-                  label="Your name"
+                  label="Your Name"
                   name="name"
                   value={values.name}
                   onChange={updateField('name')}
@@ -215,7 +210,7 @@ const Start = () => {
                   disabled={submitting}
                 />
                 <TextField
-                  label="Phone (optional)"
+                  label="Phone (Optional)"
                   name="phone"
                   value={values.phone}
                   onChange={updateField('phone')}
@@ -224,7 +219,7 @@ const Start = () => {
                   disabled={submitting}
                 />
                 <TextField
-                  label="Business name"
+                  label="Business Name"
                   name="businessName"
                   value={values.businessName}
                   onChange={updateField('businessName')}
@@ -237,14 +232,14 @@ const Start = () => {
                 />
                 <TextField
                   select
-                  label="Package / service"
+                  label="Package / Service"
                   name="packageSlug"
                   value={values.packageSlug}
                   onChange={updateField('packageSlug')}
                   required
                   fullWidth
                   error={Boolean(fieldErrors.packageSlug)}
-                  helperText={fieldErrors.packageSlug || 'Choose the closest fit—or Not sure yet.'}
+                  helperText={fieldErrors.packageSlug || 'Choose the closest fit—or Not Sure Yet.'}
                   sx={fieldSx}
                   disabled={submitting}
                   SelectProps={{ MenuProps: selectMenuProps }}
@@ -260,11 +255,11 @@ const Start = () => {
 
             <Box>
               <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600, mb: 2 }}>
-                Project goals
+                Project Goals
               </Typography>
               <Stack spacing={2}>
                 <TextField
-                  label="Website goals"
+                  label="Website Goals"
                   name="websiteGoals"
                   value={values.websiteGoals}
                   onChange={updateField('websiteGoals')}
@@ -281,7 +276,7 @@ const Start = () => {
                   disabled={submitting}
                 />
                 <TextField
-                  label="Requested features (optional)"
+                  label="Requested Features (Optional)"
                   name="requestedFeatures"
                   value={values.requestedFeatures}
                   onChange={updateField('requestedFeatures')}
@@ -293,7 +288,7 @@ const Start = () => {
                   disabled={submitting}
                 />
                 <TextField
-                  label="Inspiration links (optional)"
+                  label="Inspiration Links (Optional)"
                   name="inspirationLinks"
                   value={values.inspirationLinks}
                   onChange={updateField('inspirationLinks')}
@@ -309,11 +304,11 @@ const Start = () => {
 
             <Box>
               <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600, mb: 2 }}>
-                Optional details
+                Optional Details
               </Typography>
               <Stack spacing={2}>
                 <TextField
-                  label="Current website (optional)"
+                  label="Current Website (Optional)"
                   name="currentWebsite"
                   value={values.currentWebsite}
                   onChange={updateField('currentWebsite')}
@@ -322,7 +317,7 @@ const Start = () => {
                   disabled={submitting}
                 />
                 <TextField
-                  label="Domain information (optional)"
+                  label="Domain Information (Optional)"
                   name="domainInfo"
                   value={values.domainInfo}
                   onChange={updateField('domainInfo')}
@@ -332,7 +327,7 @@ const Start = () => {
                   disabled={submitting}
                 />
                 <TextField
-                  label="Branding notes (optional)"
+                  label="Branding Notes (Optional)"
                   name="brandingNotes"
                   value={values.brandingNotes}
                   onChange={updateField('brandingNotes')}
@@ -345,7 +340,7 @@ const Start = () => {
                 />
                 <TextField
                   select
-                  label="Content readiness (optional)"
+                  label="Content Readiness (Optional)"
                   name="contentReadiness"
                   value={values.contentReadiness}
                   onChange={updateField('contentReadiness')}
@@ -365,7 +360,7 @@ const Start = () => {
                 </TextField>
                 <TextField
                   select
-                  label="Desired timeline (optional)"
+                  label="Desired Timeline (Optional)"
                   name="timeline"
                   value={values.timeline}
                   onChange={updateField('timeline')}
@@ -385,7 +380,7 @@ const Start = () => {
                 </TextField>
                 <TextField
                   select
-                  label="Approximate budget (optional)"
+                  label="Approximate Budget (Optional)"
                   name="budget"
                   value={values.budget}
                   onChange={updateField('budget')}
@@ -405,7 +400,7 @@ const Start = () => {
                 </TextField>
                 <Box>
                   <Typography sx={{ color: colors.text, fontWeight: 600, mb: 1 }}>
-                    Logo &amp; media files (optional)
+                    Logo &amp; Media Files (Optional)
                   </Typography>
                   <Typography variant="body2" sx={{ color: colors.muted, mb: 1.5 }}>
                     Up to 5 files, 5 MB each (15 MB total). Images, PDF, Word, or plain text.
@@ -503,7 +498,7 @@ const Start = () => {
               sx={{ position: 'absolute', left: '-10000px', height: 0, overflow: 'hidden' }}
             >
               <TextField
-                label="Company website"
+                label="Company Website"
                 name="companyWebsite"
                 tabIndex={-1}
                 autoComplete="off"
@@ -511,8 +506,6 @@ const Start = () => {
                 onChange={updateField('companyWebsite')}
               />
             </Box>
-
-            <FormStatus status={status} message={statusMessage} />
 
             <Typography variant="body2" sx={{ color: colors.muted }}>
               By submitting, you agree to the storage of your inquiry details and any uploaded files

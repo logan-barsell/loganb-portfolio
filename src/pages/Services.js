@@ -32,7 +32,7 @@ const Services = () => {
                   {service.priceLabel}
                 </Typography>
                 <Typography sx={{ color: colors.muted, mb: 2 }}>
-                  <strong style={{ color: colors.text }}>Who it is for:</strong> {service.whoFor}
+                  <strong style={{ color: colors.text }}>Who It Is For:</strong> {service.whoFor}
                 </Typography>
                 {service.examples ? (
                   <>
@@ -55,7 +55,7 @@ const Services = () => {
                   ))}
                 </Box>
                 <Typography sx={{ color: colors.muted, mb: 3 }}>
-                  <strong style={{ color: colors.text }}>Typical outcome:</strong>{' '}
+                  <strong style={{ color: colors.text }}>Typical Outcome:</strong>{' '}
                   {service.outcome}
                 </Typography>
                 {service.note ? (

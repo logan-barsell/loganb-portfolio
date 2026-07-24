@@ -6,6 +6,8 @@ const {
   insertAttachments,
   updateNotificationStatus,
   getInquiryWithAttachments,
+  resolveClientForInquiry,
+  setInquiryClientId,
 } = require('../db');
 const { sendInquiryNotification } = require('../email');
 const { upload, mapUploadedFiles, removeFiles } = require('../utils/uploads');
@@ -50,6 +52,13 @@ router.post('/contact', inquiryLimiter, express.json({ limit: '32kb' }), async (
       notificationStatus: 'pending',
     });
 
+    const clientId = resolveClientForInquiry({
+      type: 'contact',
+      name: data.name,
+      email: data.email,
+    });
+    if (clientId) setInquiryClientId(id, clientId);
+
     return notifyAndRespond(res, id);
   } catch (error) {
     return next(error);
@@ -92,6 +101,15 @@ router.post(
         budget: data.budget,
         notificationStatus: 'pending',
       });
+
+      const clientId = resolveClientForInquiry({
+        type: 'project',
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        businessName: data.businessName,
+      });
+      if (clientId) setInquiryClientId(id, clientId);
 
       insertAttachments(id, mappedFiles);
       return notifyAndRespond(res, id);

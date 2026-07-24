@@ -5,19 +5,19 @@ import TextField from '@mui/material/TextField';
 import Stack from '@mui/material/Stack';
 import Section from '../components/Section';
 import CtaButton from '../components/CtaButton';
-import FormStatus from '../components/forms/FormStatus';
 import SeoNoIndex from '../components/SeoNoIndex';
 import { fieldSx } from '../components/forms/formStyles';
 import { useAuth } from '../auth/AuthProvider';
+import { useToast } from '../toast/ToastProvider';
 
 const Login = () => {
   const { login, isAuthenticated, loading } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   const from = location.state?.from?.pathname || '/admin/inquiries';
 
@@ -29,12 +29,11 @@ const Login = () => {
     event.preventDefault();
     if (submitting) return;
     setSubmitting(true);
-    setError('');
     try {
       await login(email.trim(), password);
       navigate(from.startsWith('/admin') ? from : '/admin/inquiries', { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password.');
+      toast.error(err.message || 'Invalid email or password.');
     } finally {
       setSubmitting(false);
     }
@@ -76,7 +75,6 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 sx={fieldSx}
               />
-              {error ? <FormStatus status="error" message={error} /> : null}
               <CtaButton
                 type="submit"
                 disabled={submitting || loading}

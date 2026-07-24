@@ -7,9 +7,9 @@ import { Link as RouterLink } from 'react-router-dom';
 import Link from '@mui/material/Link';
 import Section from '../components/Section';
 import CtaButton from '../components/CtaButton';
-import FormStatus from '../components/forms/FormStatus';
 import { fieldSx } from '../components/forms/formStyles';
 import { postJson } from '../api/client';
+import { useToast } from '../toast/ToastProvider';
 import { colors } from '../theme/colors';
 
 const initialValues = {
@@ -20,10 +20,9 @@ const initialValues = {
 };
 
 const Contact = () => {
+  const toast = useToast();
   const [values, setValues] = useState(initialValues);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [status, setStatus] = useState(null);
-  const [statusMessage, setStatusMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const updateField = (field) => (event) => {
@@ -42,21 +41,17 @@ const Contact = () => {
     if (submitting) return;
 
     setSubmitting(true);
-    setStatus(null);
-    setStatusMessage('');
     setFieldErrors({});
 
     try {
       const result = await postJson('/api/inquiries/contact', values);
-      setStatus('success');
-      setStatusMessage(result.message || 'Thanks — your message was received.');
+      toast.success(result.message || 'Thanks — your message was received.');
       setValues(initialValues);
     } catch (error) {
       if (error.details && typeof error.details === 'object') {
         setFieldErrors(error.details);
       }
-      setStatus('error');
-      setStatusMessage(error.message || 'Something went wrong. Please try again.');
+      toast.error(error.message || 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -78,7 +73,7 @@ const Contact = () => {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ maxWidth: 560 }}>
-          <Stack spacing={2}>
+          <Stack spacing={2.5}>
             <TextField
               label="Name"
               name="name"
@@ -112,7 +107,7 @@ const Contact = () => {
               required
               fullWidth
               multiline
-              minRows={4}
+              minRows={5}
               error={Boolean(fieldErrors.message)}
               helperText={fieldErrors.message}
               sx={fieldSx}
@@ -123,7 +118,7 @@ const Contact = () => {
               sx={{ position: 'absolute', left: '-10000px', height: 0, overflow: 'hidden' }}
             >
               <TextField
-                label="Company website"
+                label="Company Website"
                 name="companyWebsite"
                 tabIndex={-1}
                 autoComplete="off"
@@ -131,7 +126,6 @@ const Contact = () => {
                 onChange={updateField('companyWebsite')}
               />
             </Box>
-            <FormStatus status={status} message={statusMessage} />
             <Typography variant="body2" sx={{ color: colors.muted }}>
               By submitting, you agree to the storage of your inquiry details as described in the{' '}
               <Link component={RouterLink} to="/privacy" sx={{ color: colors.green }}>
