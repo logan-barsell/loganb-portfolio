@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
+const { randomUUID, createHash, randomBytes } = require('crypto');
 const Database = require('better-sqlite3');
 const { config } = require('./config');
 const { INQUIRY_STAGES, PROJECT_STATUSES } = require('./constants');
@@ -264,10 +264,15 @@ function getInquiryWithAttachments(id) {
   const database = getDb();
   const inquiry = database.prepare('SELECT * FROM inquiries WHERE id = ?').get(id);
   if (!inquiry) return null;
-  const attachments = database
-    .prepare('SELECT * FROM attachments WHERE inquiry_id = ? ORDER BY created_at ASC')
-    .all(id);
+  const attachments = listAttachmentsForInquiry(id, database);
   return { ...inquiry, attachments };
+}
+
+function listAttachmentsForInquiry(inquiryId, database = getDb()) {
+  if (!inquiryId) return [];
+  return database
+    .prepare('SELECT * FROM attachments WHERE inquiry_id = ? ORDER BY created_at ASC')
+    .all(inquiryId);
 }
 
 function createSession({ tokenHash, credentialFingerprint, expiresAt }) {
@@ -325,11 +330,12 @@ const PIPELINE_ORDER_SQL = `CASE stage
   WHEN 'contacted' THEN 1
   WHEN 'draft_proposal' THEN 2
   WHEN 'sent_proposal' THEN 3
-  WHEN 'declined_proposal' THEN 4
-  WHEN 'active_project' THEN 5
-  WHEN 'on_hold_project' THEN 6
-  WHEN 'completed_project' THEN 7
-  WHEN 'cancelled_project' THEN 8
+  WHEN 'revision_proposal' THEN 4
+  WHEN 'declined_proposal' THEN 5
+  WHEN 'active_project' THEN 6
+  WHEN 'on_hold_project' THEN 7
+  WHEN 'completed_project' THEN 8
+  WHEN 'cancelled_project' THEN 9
   ELSE 99
 END`;
 
@@ -457,6 +463,176 @@ function createProject(payload, database = getDb()) {
   }
 
   return database.prepare(`SELECT * FROM projects WHERE id = ?`).get(id);
+}
+
+function getProjectById(id, database = getDb()) {
+  return database.prepare(`SELECT * FROM projects WHERE id = ?`).get(id);
+}
+
+function getProjectByProposalId(proposalId, database = getDb()) {
+  return database.prepare(`SELECT * FROM projects WHERE proposal_id = ?`).get(proposalId);
+}
+
+function listRevisionRequestsForProposal(proposalId, database = getDb()) {
+  return database
+    .prepare(
+      `SELECT id, proposal_id, message, created_at
+       FROM proposal_revision_requests
+       WHERE proposal_id = ?
+       ORDER BY created_at DESC, id DESC`
+    )
+    .all(proposalId);
+}
+
+function projectNameFromProposal(proposal) {
+  const business =
+    proposal.client?.business_name ||
+    proposal.inquiry?.business_name ||
+    proposal.client?.name ||
+    proposal.inquiry?.name;
+  return business ? `${business} Website` : 'Website Project';
+}
+
+/**
+ * Accept proposal: set accepted, create or reactivate project.
+ */
+function acceptProposal(proposalId, database = getDb()) {
+  const existing = getProposalById(proposalId, database);
+  if (!existing) return null;
+  if (existing.status === 'draft') {
+    throw createHttpError(400, 'This proposal has not been sent yet.', 'INVALID_STATUS');
+  }
+  if (existing.status === 'accepted') {
+    return { proposal: existing, project: getProjectByProposalId(proposalId, database), already: true };
+  }
+
+  const run = database.transaction(() => {
+    database
+      .prepare(
+        `UPDATE proposals
+         SET status = 'accepted', decline_reason = NULL, updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(proposalId);
+
+    let project = getProjectByProposalId(proposalId, database);
+    if (project) {
+      if (project.status !== 'active') {
+        database
+          .prepare(
+            `UPDATE projects SET status = 'active', updated_at = datetime('now') WHERE id = ?`
+          )
+          .run(project.id);
+        project = database.prepare(`SELECT * FROM projects WHERE id = ?`).get(project.id);
+      }
+    } else {
+      project = createProject(
+        {
+          clientId: existing.client_id,
+          proposalId: existing.id,
+          inquiryId: existing.inquiry_id,
+          status: 'active',
+          name: projectNameFromProposal(existing),
+        },
+        database
+      );
+    }
+
+    syncInquiryPipeline(existing.inquiry_id, database);
+    return { proposal: getProposalById(proposalId, database), project, already: false };
+  });
+
+  return run();
+}
+
+/**
+ * Decline proposal: set declined, cancel linked project if any.
+ */
+function declineProposal(proposalId, reason = null, database = getDb()) {
+  const existing = getProposalById(proposalId, database);
+  if (!existing) return null;
+  if (existing.status === 'draft') {
+    throw createHttpError(400, 'This proposal has not been sent yet.', 'INVALID_STATUS');
+  }
+  if (existing.status === 'declined') {
+    return { proposal: existing, project: getProjectByProposalId(proposalId, database), already: true };
+  }
+
+  const run = database.transaction(() => {
+    database
+      .prepare(
+        `UPDATE proposals
+         SET status = 'declined', decline_reason = ?, updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(reason || null, proposalId);
+
+    const project = getProjectByProposalId(proposalId, database);
+    if (project && project.status !== 'cancelled') {
+      database
+        .prepare(
+          `UPDATE projects SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
+        )
+        .run(project.id);
+    }
+
+    syncInquiryPipeline(existing.inquiry_id, database);
+    return {
+      proposal: getProposalById(proposalId, database),
+      project: getProjectByProposalId(proposalId, database),
+      already: false,
+    };
+  });
+
+  return run();
+}
+
+/**
+ * Append a revision request and mark proposal revision_requested.
+ */
+function requestProposalRevision(proposalId, message, database = getDb()) {
+  const existing = getProposalById(proposalId, database);
+  if (!existing) return null;
+  if (existing.status === 'draft') {
+    throw createHttpError(400, 'This proposal has not been sent yet.', 'INVALID_STATUS');
+  }
+
+  const trimmed = String(message || '').trim();
+  if (!trimmed) {
+    throw createHttpError(400, 'Please describe what you would like revised.', 'VALIDATION_ERROR', {
+      message: 'Please describe what you would like revised.',
+    });
+  }
+
+  const run = database.transaction(() => {
+    const id = randomUUID();
+    database
+      .prepare(
+        `INSERT INTO proposal_revision_requests (id, proposal_id, message)
+         VALUES (?, ?, ?)`
+      )
+      .run(id, proposalId, trimmed);
+
+    database
+      .prepare(
+        `UPDATE proposals
+         SET status = 'revision_requested', updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(proposalId);
+
+    syncInquiryPipeline(existing.inquiry_id, database);
+
+    return {
+      proposal: getProposalById(proposalId, database),
+      revision: database
+        .prepare(`SELECT id, proposal_id, message, created_at FROM proposal_revision_requests WHERE id = ?`)
+        .get(id),
+      revisions: listRevisionRequestsForProposal(proposalId, database),
+    };
+  });
+
+  return run();
 }
 
 /**
@@ -765,12 +941,100 @@ function getProposalById(id, database = getDb()) {
   const inquiry = database
     .prepare(
       `SELECT id, type, name, email, business_name, package_slug, stage, website_goals,
-              phone, created_at, client_id
+              current_website, requested_features, inspiration_links, domain_info,
+              branding_notes, content_readiness, timeline, budget, message, phone,
+              created_at, client_id
        FROM inquiries WHERE id = ?`
     )
     .get(proposal.inquiry_id);
 
   return { ...proposal, client, inquiry };
+}
+
+/** Always set status=sent and refresh sent_at (used by send/resend). */
+function markProposalSent(id, database = getDb()) {
+  const existing = database.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
+  if (!existing) return null;
+
+  const sentAt = new Date().toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
+  database
+    .prepare(
+      `UPDATE proposals SET status = 'sent', sent_at = ?, updated_at = datetime('now') WHERE id = ?`
+    )
+    .run(sentAt, id);
+
+  syncInquiryPipeline(existing.inquiry_id, database);
+  return getProposalById(id, database);
+}
+
+function hashShareToken(rawToken) {
+  return createHash('sha256').update(String(rawToken)).digest('hex');
+}
+
+function generateShareToken() {
+  return randomBytes(32).toString('base64url');
+}
+
+function sqliteExpiryFromNow(days) {
+  const ms = Date.now() + Number(days) * 24 * 60 * 60 * 1000;
+  return new Date(ms).toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
+}
+
+function deleteSharesForProposal(proposalId, database = getDb()) {
+  database.prepare(`DELETE FROM proposal_shares WHERE proposal_id = ?`).run(proposalId);
+}
+
+/**
+ * Invalidate prior shares and create a new one. Returns { id, rawToken, expiresAt }.
+ * Pass precomputed rawToken/expiresAt to send email before persisting.
+ */
+function createProposalShare(proposalId, options = {}, database = getDb()) {
+  const rawToken = options.rawToken || generateShareToken();
+  const tokenHash = hashShareToken(rawToken);
+  const id = randomUUID();
+  const expiresAt = options.expiresAt || sqliteExpiryFromNow(config.proposalShareTtlDays);
+
+  const run = database.transaction(() => {
+    deleteSharesForProposal(proposalId, database);
+    database
+      .prepare(
+        `INSERT INTO proposal_shares (id, proposal_id, token_hash, expires_at)
+         VALUES (?, ?, ?, ?)`
+      )
+      .run(id, proposalId, tokenHash, expiresAt);
+  });
+  run();
+
+  return { id, rawToken, expiresAt };
+}
+
+function prepareProposalShareToken() {
+  return {
+    rawToken: generateShareToken(),
+    expiresAt: sqliteExpiryFromNow(config.proposalShareTtlDays),
+  };
+}
+
+function getProposalShareByRawToken(rawToken, database = getDb()) {
+  const tokenHash = hashShareToken(rawToken);
+  const share = database
+    .prepare(`SELECT * FROM proposal_shares WHERE token_hash = ?`)
+    .get(tokenHash);
+  if (!share) return null;
+
+  const expiresMs = Date.parse(
+    /Z$|[+-]\d{2}:?\d{2}$/.test(share.expires_at)
+      ? share.expires_at
+      : `${String(share.expires_at).replace(' ', 'T')}Z`
+  );
+  if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) {
+    return { expired: true, share };
+  }
+
+  const proposal = getProposalById(share.proposal_id, database);
+  if (!proposal) return null;
+
+  return { expired: false, share, proposal };
 }
 
 function listProposalsByInquiryId(inquiryId, database = getDb()) {
@@ -810,7 +1074,13 @@ function listAdminProposals({
     params.search = `%${escapeLike(q)}%`;
   }
 
-  if (status === 'draft' || status === 'sent' || status === 'declined') {
+  if (
+    status === 'draft' ||
+    status === 'sent' ||
+    status === 'revision_requested' ||
+    status === 'accepted' ||
+    status === 'declined'
+  ) {
     where.push('p.status = @status');
     params.status = status;
   }
@@ -911,7 +1181,8 @@ function listAdminProjects({
          p.id, p.name, p.status, p.proposal_id, p.inquiry_id, p.client_id,
          p.created_at, p.updated_at,
          c.name AS client_name, c.business_name AS client_business_name, c.email AS client_email,
-         i.stage AS inquiry_stage
+         i.stage AS inquiry_stage, i.type AS inquiry_type,
+         i.package_slug AS inquiry_package_slug
        FROM projects p
        INNER JOIN clients c ON c.id = p.client_id
        LEFT JOIN inquiries i ON i.id = p.inquiry_id
@@ -930,6 +1201,32 @@ function listAdminProjects({
   };
 }
 
+function getAdminProjectById(id, database = getDb()) {
+  const row = database
+    .prepare(
+      `SELECT
+         p.id, p.name, p.status, p.proposal_id, p.inquiry_id, p.client_id,
+         p.created_at, p.updated_at,
+         c.name AS client_name, c.business_name AS client_business_name,
+         c.email AS client_email, c.phone AS client_phone,
+         i.stage AS inquiry_stage, i.type AS inquiry_type,
+         i.package_slug AS inquiry_package_slug, i.name AS inquiry_name,
+         i.business_name AS inquiry_business_name, i.email AS inquiry_email,
+         i.created_at AS inquiry_created_at,
+         pr.status AS proposal_status, pr.design_amount_cents, pr.hosting_monthly_cents,
+         pr.currency AS proposal_currency, pr.summary AS proposal_summary,
+         pr.sent_at AS proposal_sent_at, pr.created_at AS proposal_created_at
+       FROM projects p
+       INNER JOIN clients c ON c.id = p.client_id
+       LEFT JOIN inquiries i ON i.id = p.inquiry_id
+       LEFT JOIN proposals pr ON pr.id = p.proposal_id
+       WHERE p.id = ?`
+    )
+    .get(id);
+
+  return row || null;
+}
+
 module.exports = {
   getDb,
   closeDb,
@@ -940,10 +1237,18 @@ module.exports = {
   markInquiryContacted,
   createProject,
   updateProjectStatus,
+  getProjectById,
+  getProjectByProposalId,
+  getAdminProjectById,
+  acceptProposal,
+  declineProposal,
+  requestProposalRevision,
+  listRevisionRequestsForProposal,
   insertInquiry,
   insertAttachments,
   updateNotificationStatus,
   getInquiryWithAttachments,
+  listAttachmentsForInquiry,
   createSession,
   getSessionByTokenHash,
   touchSession,
@@ -961,8 +1266,14 @@ module.exports = {
   getAdminClientById,
   createProposal,
   updateProposal,
+  markProposalSent,
   getProposalById,
   listProposalsByInquiryId,
   listAdminProposals,
   listAdminProjects,
+  createProposalShare,
+  prepareProposalShareToken,
+  deleteSharesForProposal,
+  getProposalShareByRawToken,
+  hashShareToken,
 };

@@ -14,6 +14,11 @@ import ProposalFormFields, {
 } from '../../components/admin/ProposalFormFields';
 import { createProposal, fetchClient, fetchInquiry } from '../../api/adminClient';
 import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import {
+  resolveBudgetLabel,
+  resolveContentReadinessLabel,
+  resolveTimelineLabel,
+} from '../../data/intakeOptions';
 import { sitePackages } from '../../data/pricing';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
@@ -89,7 +94,7 @@ function seedFromInquiry(inquiry) {
       : `Website proposal for ${inquiry.businessName || inquiry.name}.`,
     scope: inquiry.websiteGoals || '',
     deliverables: pkg?.highlights?.join('\n') || '',
-    timelineSummary: inquiry.timeline || '',
+    timelineSummary: resolveTimelineLabel(inquiry.timeline) || '',
     designAmountDollars: designCents ? centsToDollarsInput(designCents) : '',
   };
 }
@@ -315,9 +320,12 @@ const ProposalNew = () => {
                   <Field label="Inspiration Links" value={inquiry.inspirationLinks} />
                   <Field label="Domain Info" value={inquiry.domainInfo} />
                   <Field label="Branding Notes" value={inquiry.brandingNotes} />
-                  <Field label="Content Readiness" value={inquiry.contentReadiness} />
-                  <Field label="Timeline" value={inquiry.timeline} />
-                  <Field label="Budget" value={inquiry.budget} />
+                  <Field
+                    label="Content Readiness"
+                    value={resolveContentReadinessLabel(inquiry.contentReadiness)}
+                  />
+                  <Field label="Timeline" value={resolveTimelineLabel(inquiry.timeline)} />
+                  <Field label="Budget" value={resolveBudgetLabel(inquiry.budget)} />
                 </>
               ) : null}
               <Field label="Submitted" value={formatDate(inquiry.createdAt)} />

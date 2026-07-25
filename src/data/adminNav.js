@@ -14,6 +14,7 @@ export const inquiryStageOptions = [
   { value: 'contacted', label: 'Contacted' },
   { value: 'draft_proposal', label: 'Drafted Proposal' },
   { value: 'sent_proposal', label: 'Sent Proposal' },
+  { value: 'revision_proposal', label: 'Revision Pending' },
   { value: 'declined_proposal', label: 'Declined Proposal' },
   { value: 'active_project', label: 'Active Project' },
   { value: 'on_hold_project', label: 'On Hold Project' },
@@ -71,6 +72,8 @@ export const proposalStatusOptions = [
   { value: '', label: 'All Statuses' },
   { value: 'draft', label: 'Draft' },
   { value: 'sent', label: 'Sent' },
+  { value: 'revision_requested', label: 'Revision Pending' },
+  { value: 'accepted', label: 'Accepted' },
   { value: 'declined', label: 'Declined' },
 ];
 

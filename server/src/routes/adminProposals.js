@@ -11,8 +11,13 @@ const {
   getProposalById,
   createProposal,
   updateProposal,
+  markProposalSent,
   getAdminInquiryById,
   listProposalsByInquiryId,
+  createProposalShare,
+  prepareProposalShareToken,
+  listRevisionRequestsForProposal,
+  listAttachmentsForInquiry,
 } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { setNoStore } = require('../auth/cookies');
@@ -20,7 +25,11 @@ const {
   trimToNull,
   enforceMaxLength,
   createHttpError,
+  normalizeEmail,
+  isValidEmail,
 } = require('../utils/normalize');
+const { config } = require('../config');
+const { sendProposalShareEmail } = require('../email');
 
 const router = express.Router();
 
@@ -76,7 +85,24 @@ function mapProposalListRow(row) {
   };
 }
 
+function mapAttachmentMeta(row) {
+  return {
+    id: row.id,
+    originalName: row.original_name,
+    mimeType: row.mime_type,
+    sizeBytes: row.size_bytes,
+    createdAt: toIsoUtc(row.created_at),
+  };
+}
+
 function mapProposalDetail(row) {
+  const revisions = listRevisionRequestsForProposal(row.id).map((r) => ({
+    id: r.id,
+    message: r.message,
+    createdAt: toIsoUtc(r.created_at),
+  }));
+  const attachments = listAttachmentsForInquiry(row.inquiry_id).map(mapAttachmentMeta);
+
   return {
     id: row.id,
     status: row.status,
@@ -94,10 +120,13 @@ function mapProposalDetail(row) {
     hostingMonthlyLabel: formatMoney(row.hosting_monthly_cents, row.currency),
     currency: row.currency,
     sentAt: toIsoUtc(row.sent_at),
+    declineReason: row.decline_reason || null,
     createdAt: toIsoUtc(row.created_at),
     updatedAt: toIsoUtc(row.updated_at),
     inquiryId: row.inquiry_id,
     clientId: row.client_id,
+    revisions,
+    attachments,
     client: row.client
       ? {
           id: row.client.id,
@@ -199,7 +228,7 @@ function parseProposalBody(body, { partial = false } = {}) {
   if (body.status !== undefined) {
     if (!PROPOSAL_STATUSES.includes(body.status)) {
       throw createHttpError(400, 'Invalid proposal status.', 'VALIDATION_ERROR', {
-        status: 'Status must be draft, sent, or declined.',
+        status: 'Status must be draft, sent, revision_requested, accepted, or declined.',
       });
     }
     out.status = body.status;
@@ -305,6 +334,87 @@ router.patch('/:id', express.json({ limit: '64kb' }), (req, res, next) => {
     const fields = parseProposalBody(req.body || {}, { partial: true });
     const proposal = updateProposal(req.params.id, fields);
     return res.status(200).json({ ok: true, proposal: mapProposalDetail(proposal) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+function parseEmailList(value) {
+  if (value === undefined || value === null || value === '') return [];
+  return String(value)
+    .split(',')
+    .map((part) => normalizeEmail(part))
+    .filter(Boolean);
+}
+
+router.post('/:id/send', express.json({ limit: '64kb' }), async (req, res, next) => {
+  try {
+    const proposal = getProposalById(req.params.id);
+    if (!proposal) {
+      throw createHttpError(404, 'Proposal not found.', 'NOT_FOUND');
+    }
+    if (!proposal.client?.email) {
+      throw createHttpError(400, 'Client email is required to send a proposal.', 'CLIENT_EMAIL_REQUIRED');
+    }
+    if (!config.publicAppUrl) {
+      throw createHttpError(500, 'PUBLIC_APP_URL is not configured.', 'CONFIG_ERROR');
+    }
+
+    const errors = {};
+    const to = normalizeEmail(req.body?.to) || normalizeEmail(proposal.client.email);
+    if (!isValidEmail(to)) {
+      errors.to = 'Enter a valid recipient email.';
+    }
+
+    const ccList = parseEmailList(req.body?.cc);
+    const invalidCc = ccList.find((email) => !isValidEmail(email));
+    if (invalidCc) {
+      errors.cc = 'Enter valid CC emails, separated by commas.';
+    }
+
+    let subject = enforceMaxLength(trimToNull(req.body?.subject), LIMITS.proposalEmailSubject);
+    if (!subject) {
+      const who = proposal.client.business_name || proposal.client.name || 'your project';
+      subject = `Website proposal for ${who}`;
+    }
+
+    let message = enforceMaxLength(trimToNull(req.body?.message), LIMITS.proposalEmailMessage);
+    if (!message) {
+      message =
+        'Thank you for sharing your project details. I put together a proposal for you to review. Use the button below to open it — you can accept, request a revision, or decline from that page.';
+    }
+
+    if (Object.keys(errors).length) {
+      throw createHttpError(400, 'Please fix the highlighted fields.', 'VALIDATION_ERROR', errors);
+    }
+
+    const prepared = prepareProposalShareToken();
+    const viewUrl = `${config.publicAppUrl}/p/${prepared.rawToken}`;
+
+    try {
+      await sendProposalShareEmail({
+        to: [to],
+        cc: ccList,
+        subject,
+        message,
+        viewUrl,
+        clientName: proposal.client.name,
+      });
+    } catch (err) {
+      if (err.code === 'EMAIL_NOT_CONFIGURED' || err.code === 'EMAIL_SEND_FAILED') {
+        throw createHttpError(502, err.message || 'Failed to send email.', err.code, err.details);
+      }
+      throw err;
+    }
+
+    createProposalShare(proposal.id, prepared);
+    const updated = markProposalSent(proposal.id);
+
+    return res.status(200).json({
+      ok: true,
+      proposal: mapProposalDetail(updated),
+      share: { expiresAt: toIsoUtc(prepared.expiresAt) },
+    });
   } catch (error) {
     return next(error);
   }

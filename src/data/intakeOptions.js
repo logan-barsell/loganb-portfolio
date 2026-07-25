@@ -37,3 +37,28 @@ export const contentReadinessOptions = [
   { value: 'need-help', label: 'I need help with content' },
   { value: 'not-sure', label: 'Not Sure Yet' },
 ];
+
+export const timelineLabels = Object.fromEntries(
+  timelineOptions.map((option) => [option.value, option.label])
+);
+export const budgetLabels = Object.fromEntries(
+  budgetOptions.map((option) => [option.value, option.label])
+);
+export const contentReadinessLabels = Object.fromEntries(
+  contentReadinessOptions.map((option) => [option.value, option.label])
+);
+
+export function resolveTimelineLabel(value) {
+  if (!value) return null;
+  return timelineLabels[value] || value;
+}
+
+export function resolveBudgetLabel(value) {
+  if (!value) return null;
+  return budgetLabels[value] || value;
+}
+
+export function resolveContentReadinessLabel(value) {
+  if (!value) return null;
+  return contentReadinessLabels[value] || value;
+}

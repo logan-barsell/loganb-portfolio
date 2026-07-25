@@ -24,7 +24,7 @@ import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import { fieldSx, selectMenuProps } from '../../components/forms/formStyles';
 import { fetchProjects } from '../../api/adminClient';
-import { projectStatusOptions, resolveStageLabel } from '../../data/adminNav';
+import { projectStatusOptions, resolveStageLabel, inquiryTypeChipLabel } from '../../data/adminNav';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
@@ -115,22 +115,8 @@ const Projects = () => {
   };
   const centeredCellSx = { ...cellSx, textAlign: 'center' };
 
-  const statusChip = (label) => (
-    <Chip
-      label={label}
-      size="small"
-      sx={{
-        color: colors.green,
-        border: `1px solid ${colors.green}`,
-        backgroundColor: colors.greenSoft,
-        fontWeight: 600,
-      }}
-    />
-  );
-
-  const pipelineChip = (stage, apiLabel) => {
-    const label = resolveStageLabel(stage, apiLabel);
-    return label ? (
+  const typeChip = (label) =>
+    label ? (
       <Chip
         label={label}
         size="small"
@@ -142,14 +128,28 @@ const Projects = () => {
         }}
       />
     ) : null;
+
+  const pipelineChip = (stage, apiLabel) => {
+    const label = resolveStageLabel(stage, apiLabel);
+    return label ? (
+      <Chip
+        label={label}
+        size="small"
+        sx={{
+          color: colors.green,
+          border: `1px solid ${colors.green}`,
+          backgroundColor: colors.greenSoft,
+          fontWeight: 600,
+        }}
+      />
+    ) : null;
   };
 
   return (
     <Box sx={{ pb: 4 }}>
       <Section title="Projects">
         <Typography sx={{ color: colors.muted, mb: 3, maxWidth: 720 }}>
-          Projects appear here after a proposal is accepted. Acceptance and project creation come in
-          a later phase.
+          Projects appear here after a client accepts a proposal.
         </Typography>
 
         <Box
@@ -168,7 +168,7 @@ const Projects = () => {
           }}
         >
           <TextField
-            label="Search Name, Client, Email"
+            label="Search Client Name, Business, Email"
             value={draftQ}
             onChange={(e) => setDraftQ(e.target.value)}
             sx={fieldSx}
@@ -239,8 +239,7 @@ const Projects = () => {
                 }}
               >
                 <CardContent>
-                  <Typography sx={{ color: colors.text, fontWeight: 600 }}>{item.name}</Typography>
-                  <Typography sx={{ color: colors.muted, fontSize: 14 }}>
+                  <Typography sx={{ color: colors.text, fontWeight: 600 }}>
                     {item.clientName}
                   </Typography>
                   {item.clientBusinessName ? (
@@ -249,21 +248,27 @@ const Projects = () => {
                     </Typography>
                   ) : null}
                   <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
-                    {statusChip(item.statusLabel)}
+                    {typeChip(
+                      item.inquiryType || item.packageLabel || item.packageSlug
+                        ? inquiryTypeChipLabel(
+                            item.inquiryType,
+                            item.packageLabel,
+                            item.packageSlug
+                          )
+                        : null
+                    )}
                     {pipelineChip(item.inquiryStage, item.inquiryStageLabel)}
                   </Stack>
                   <Typography sx={{ color: colors.muted, fontSize: 13, mt: 1 }}>
                     {formatDate(item.createdAt)}
                   </Typography>
-                  {item.clientId ? (
-                    <Button
-                      component={RouterLink}
-                      to={`/admin/clients/${item.clientId}`}
-                      sx={{ mt: 1.5, color: colors.green, textTransform: 'none', px: 0 }}
-                    >
-                      View Client
-                    </Button>
-                  ) : null}
+                  <Button
+                    component={RouterLink}
+                    to={`/admin/projects/${item.id}`}
+                    sx={{ mt: 1.5, color: colors.green, textTransform: 'none', px: 0 }}
+                  >
+                    View Details
+                  </Button>
                 </CardContent>
               </Card>
             ))}
@@ -281,11 +286,11 @@ const Projects = () => {
             <Table size="small" sx={{ minWidth: 720 }}>
               <TableHead>
                 <TableRow>
-                  {['Name', 'Client', 'Status', 'Stage', 'Created', ''].map((label) => (
+                  {['Client', 'Type', 'Stage', 'Created', ''].map((label) => (
                     <TableCell
                       key={label || 'actions'}
                       sx={{
-                        ...(['Status', 'Stage'].includes(label) ? centeredCellSx : cellSx),
+                        ...(['Type', 'Stage'].includes(label) ? centeredCellSx : cellSx),
                         color: colors.purple,
                         fontWeight: 700,
                       }}
@@ -298,7 +303,6 @@ const Projects = () => {
               <TableBody>
                 {items.map((item) => (
                   <TableRow key={item.id} hover>
-                    <TableCell sx={cellSx}>{item.name}</TableCell>
                     <TableCell sx={cellSx}>
                       <Typography sx={{ color: colors.text, fontWeight: 600 }}>
                         {item.clientName}
@@ -309,24 +313,30 @@ const Projects = () => {
                         </Typography>
                       ) : null}
                     </TableCell>
-                    <TableCell sx={centeredCellSx}>{statusChip(item.statusLabel)}</TableCell>
+                    <TableCell sx={centeredCellSx}>
+                      {typeChip(
+                        item.inquiryType || item.packageLabel || item.packageSlug
+                          ? inquiryTypeChipLabel(
+                              item.inquiryType,
+                              item.packageLabel,
+                              item.packageSlug
+                            )
+                          : null
+                      ) || '—'}
+                    </TableCell>
                     <TableCell sx={centeredCellSx}>
                       {pipelineChip(item.inquiryStage, item.inquiryStageLabel) || '—'}
                     </TableCell>
                     <TableCell sx={cellSx}>{formatDate(item.createdAt)}</TableCell>
                     <TableCell sx={cellSx}>
-                      {item.clientId ? (
-                        <Button
-                          component={RouterLink}
-                          to={`/admin/clients/${item.clientId}`}
-                          size="small"
-                          sx={{ color: colors.green, textTransform: 'none' }}
-                        >
-                          View Client
-                        </Button>
-                      ) : (
-                        '—'
-                      )}
+                      <Button
+                        component={RouterLink}
+                        to={`/admin/projects/${item.id}`}
+                        size="small"
+                        sx={{ color: colors.green, textTransform: 'none' }}
+                      >
+                        View Details
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

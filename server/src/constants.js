@@ -18,12 +18,40 @@ const PACKAGE_LABELS = {
   'not-sure': 'Not Sure Yet',
 };
 
+const TIMELINE_LABELS = {
+  asap: 'As soon as possible',
+  '1-2-months': '1–2 Months',
+  '3-plus-months': '3+ Months',
+  flexible: 'Flexible / Not Sure',
+};
+
+const BUDGET_LABELS = {
+  'under-900': 'Under $900',
+  '900-1500': '$900–$1,500',
+  '1500-2500': '$1,500–$2,500',
+  '2500-plus': '$2,500+',
+  'not-sure': 'Not Sure Yet',
+};
+
+const CONTENT_READINESS_LABELS = {
+  ready: 'I have most of the content ready',
+  partial: 'I have some content',
+  'need-help': 'I need help with content',
+  'not-sure': 'Not Sure Yet',
+};
+
+function intakeOptionLabel(map, value) {
+  if (!value) return null;
+  return map[value] || value;
+}
+
 /** Canonical inquiry pipeline (cached on inquiries.stage). */
 const INQUIRY_STAGES = [
   'new',
   'contacted',
   'draft_proposal',
   'sent_proposal',
+  'revision_proposal',
   'declined_proposal',
   'active_project',
   'on_hold_project',
@@ -36,6 +64,7 @@ const INQUIRY_STAGE_LABELS = {
   contacted: 'Contacted',
   draft_proposal: 'Drafted Proposal',
   sent_proposal: 'Sent Proposal',
+  revision_proposal: 'Revision Pending',
   declined_proposal: 'Declined Proposal',
   active_project: 'Active Project',
   on_hold_project: 'On Hold Project',
@@ -49,24 +78,37 @@ const PIPELINE_SORT_ORDER = {
   contacted: 1,
   draft_proposal: 2,
   sent_proposal: 3,
-  declined_proposal: 4,
-  active_project: 5,
-  on_hold_project: 6,
-  completed_project: 7,
-  cancelled_project: 8,
+  revision_proposal: 4,
+  declined_proposal: 5,
+  active_project: 6,
+  on_hold_project: 7,
+  completed_project: 8,
+  cancelled_project: 9,
 };
 
-const PROPOSAL_STATUSES = ['draft', 'sent', 'declined'];
+const PROPOSAL_STATUSES = ['draft', 'sent', 'revision_requested', 'accepted', 'declined'];
 
 const PROPOSAL_STATUS_LABELS = {
   draft: 'Draft',
   sent: 'Sent',
+  revision_requested: 'Revision Pending',
+  accepted: 'Accepted',
+  declined: 'Declined',
+};
+
+/** Client-facing decision labels on the share page. */
+const CLIENT_PROPOSAL_STATUS_LABELS = {
+  sent: null,
+  revision_requested: 'Revision Pending',
+  accepted: 'Approved',
   declined: 'Declined',
 };
 
 const PROPOSAL_STATUS_TO_PIPELINE = {
   draft: 'draft_proposal',
   sent: 'sent_proposal',
+  revision_requested: 'revision_proposal',
+  accepted: 'active_project',
   declined: 'declined_proposal',
 };
 
@@ -137,16 +179,25 @@ const LIMITS = {
   proposalTimeline: 2000,
   proposalPaymentTerms: 4000,
   proposalRevisionLimit: 200,
+  proposalEmailSubject: 200,
+  proposalEmailMessage: 5000,
+  proposalRevisionMessage: 4000,
+  proposalDeclineReason: 2000,
 };
 
 module.exports = {
   PACKAGE_SLUGS,
   PACKAGE_LABELS,
+  TIMELINE_LABELS,
+  BUDGET_LABELS,
+  CONTENT_READINESS_LABELS,
+  intakeOptionLabel,
   INQUIRY_STAGES,
   INQUIRY_STAGE_LABELS,
   PIPELINE_SORT_ORDER,
   PROPOSAL_STATUSES,
   PROPOSAL_STATUS_LABELS,
+  CLIENT_PROPOSAL_STATUS_LABELS,
   PROPOSAL_STATUS_TO_PIPELINE,
   PROJECT_STATUSES,
   PROJECT_STATUS_LABELS,

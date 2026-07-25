@@ -8,6 +8,7 @@ const adminInquiriesRouter = require('./routes/adminInquiries');
 const adminClientsRouter = require('./routes/adminClients');
 const adminProposalsRouter = require('./routes/adminProposals');
 const adminProjectsRouter = require('./routes/adminProjects');
+const proposalSharesRouter = require('./routes/proposalShares');
 const { errorHandler } = require('./middleware/errorHandler');
 
 function createApp() {
@@ -33,6 +34,7 @@ function createApp() {
   app.use('/api/admin/clients', adminClientsRouter);
   app.use('/api/admin/proposals', adminProposalsRouter);
   app.use('/api/admin/projects', adminProjectsRouter);
+  app.use('/api/proposals/share', proposalSharesRouter);
   app.use('/api/inquiries', inquiriesRouter);
 
   app.use((_req, res) => {

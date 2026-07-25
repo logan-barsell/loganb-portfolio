@@ -116,8 +116,81 @@ export async function updateProposal(id, body) {
   });
 }
 
+export async function sendProposal(id, body) {
+  return adminRequest(`/api/admin/proposals/${encodeURIComponent(id)}/send`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fetchProposalShare(token) {
+  const response = await fetch(`/api/proposals/share/${encodeURIComponent(token)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  const text = await response.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+  }
+  if (!response.ok || data.ok === false) {
+    const error = new Error(data.message || 'Unable to load proposal.');
+    error.status = response.status;
+    error.code = data.code;
+    throw error;
+  }
+  return data;
+}
+
+async function proposalShareAction(token, path, body) {
+  const response = await fetch(`/api/proposals/share/${encodeURIComponent(token)}${path}`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await response.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+  }
+  if (!response.ok || data.ok === false) {
+    const error = new Error(data.message || 'Unable to update proposal.');
+    error.status = response.status;
+    error.code = data.code;
+    error.details = data.details;
+    throw error;
+  }
+  return data;
+}
+
+export async function acceptProposalShare(token) {
+  return proposalShareAction(token, '/accept');
+}
+
+export async function reviseProposalShare(token, body) {
+  return proposalShareAction(token, '/revise', body);
+}
+
+export async function declineProposalShare(token, body) {
+  return proposalShareAction(token, '/decline', body);
+}
+
 export async function fetchProjects(params) {
   return adminRequest(`/api/admin/projects${buildQuery(params)}`);
+}
+
+export async function fetchProject(id) {
+  return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}`);
 }
 
 export function attachmentDownloadUrl(inquiryId, attachmentId) {

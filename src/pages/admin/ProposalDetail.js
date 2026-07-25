@@ -13,6 +13,8 @@ import ProposalFormFields, {
   dollarsToCents,
 } from '../../components/admin/ProposalFormFields';
 import { fetchProposal, updateProposal } from '../../api/adminClient';
+import SubmitProposalModal from '../../components/admin/SubmitProposalModal';
+import InquiryAttachments from '../../components/admin/InquiryAttachments';
 import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
@@ -125,6 +127,7 @@ const ProposalDetail = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [submitOpen, setSubmitOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,9 +259,13 @@ const ProposalDetail = () => {
                       proposal.inquiry?.stage ||
                         (proposal.status === 'sent'
                           ? 'sent_proposal'
-                          : proposal.status === 'declined'
-                            ? 'declined_proposal'
-                            : 'draft_proposal'),
+                          : proposal.status === 'revision_requested'
+                            ? 'revision_proposal'
+                            : proposal.status === 'accepted'
+                              ? 'active_project'
+                              : proposal.status === 'declined'
+                                ? 'declined_proposal'
+                                : 'draft_proposal'),
                       proposal.inquiry?.stageLabel
                     )}
                     size="small"
@@ -341,9 +348,6 @@ const ProposalDetail = () => {
                     <CtaButton type="button" secondary disabled={saving} onClick={cancelEditing}>
                       Cancel
                     </CtaButton>
-                    <CtaButton type="button" secondary disabled>
-                      Submit Proposal
-                    </CtaButton>
                   </Stack>
                 </Box>
               ) : (
@@ -357,17 +361,70 @@ const ProposalDetail = () => {
                   <Field label="Payment Terms" value={proposal.paymentTerms} />
                   <Field label="Design Price" value={proposal.designAmountLabel} />
                   <Field label="Hosting Monthly" value={proposal.hostingMonthlyLabel} />
-                  <Box sx={{ mt: 1 }}>
-                    <CtaButton type="button" secondary disabled>
-                      Submit Proposal
-                    </CtaButton>
-                  </Box>
                 </>
               )}
             </DetailBlock>
+
+            <DetailBlock title="Attachments">
+              <InquiryAttachments
+                inquiryId={proposal.inquiryId || proposal.inquiry?.id}
+                attachments={proposal.attachments}
+              />
+            </DetailBlock>
+
+            <DetailBlock title="Revision Notes">
+              {proposal.revisions?.length ? (
+                <Stack spacing={2.5}>
+                  {proposal.revisions.map((note) => (
+                    <Box key={note.id}>
+                      <Typography sx={{ color: colors.muted, fontSize: 13, mb: 0.75 }}>
+                        {formatDate(note.createdAt)}
+                      </Typography>
+                      <Typography
+                        sx={{ color: colors.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                      >
+                        {note.message}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography sx={{ color: colors.muted }}>
+                  No revision requests yet. Client notes from the proposal link will appear here.
+                </Typography>
+              )}
+              {proposal.status === 'declined' && proposal.declineReason ? (
+                <Box sx={{ mt: 2.5 }}>
+                  <Field label="Decline Reason" value={proposal.declineReason} />
+                </Box>
+              ) : null}
+            </DetailBlock>
+
+            {!editing ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
+                <CtaButton
+                  type="button"
+                  size="large"
+                  onClick={() => setSubmitOpen(true)}
+                  sx={{ px: { xs: 3, sm: 5 }, py: 1.25, fontSize: { xs: '1rem', sm: '1.1rem' } }}
+                >
+                  {proposal.status === 'draft' ? 'Submit Proposal' : 'Resend Proposal'}
+                </CtaButton>
+              </Box>
+            ) : null}
           </>
         ) : null}
       </Section>
+
+      <SubmitProposalModal
+        open={submitOpen}
+        onClose={() => setSubmitOpen(false)}
+        proposal={proposal}
+        onSent={(next) => {
+          setProposal(next);
+          setValues(proposalToForm(next));
+        }}
+      />
     </Box>
   );
 };

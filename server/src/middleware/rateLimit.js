@@ -24,4 +24,28 @@ const loginLimiter = rateLimit({
   },
 });
 
-module.exports = { inquiryLimiter, loginLimiter };
+const proposalShareLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    code: 'RATE_LIMITED',
+    message: 'Too many requests. Please wait a few minutes and try again.',
+  },
+});
+
+const proposalShareActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    code: 'RATE_LIMITED',
+    message: 'Too many requests. Please wait a few minutes and try again.',
+  },
+});
+
+module.exports = { inquiryLimiter, loginLimiter, proposalShareLimiter, proposalShareActionLimiter };

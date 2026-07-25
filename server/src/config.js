@@ -30,6 +30,11 @@ const config = {
   adminSessionTtlSeconds: Number(process.env.ADMIN_SESSION_TTL_SECONDS || 12 * 60 * 60),
   adminSessionCookieName: process.env.ADMIN_SESSION_COOKIE_NAME || 'lb_admin_session',
   allowedOrigin: process.env.ALLOWED_ORIGIN || (env === 'production' ? '' : 'http://localhost:3000'),
+  publicAppUrl: (process.env.PUBLIC_APP_URL || (env === 'production' ? '' : 'http://localhost:3000')).replace(
+    /\/$/,
+    ''
+  ),
+  proposalShareTtlDays: Number(process.env.PROPOSAL_SHARE_TTL_DAYS || 14),
 };
 
 function assertProductionConfig() {
@@ -43,6 +48,7 @@ function assertProductionConfig() {
   required('ADMIN_PASSWORD_HASH');
   required('ADMIN_SESSION_SECRET');
   required('ALLOWED_ORIGIN');
+  required('PUBLIC_APP_URL');
 
   if (config.adminSessionSecret.length < 32) {
     throw new Error('ADMIN_SESSION_SECRET must be at least 32 characters in production.');

@@ -34,6 +34,7 @@ See `deploy/nginx/loganbarsell.com.conf` for a fuller example. Without the SPA f
 3. Create an API key.
 4. Prefer a sender like: `Logan Barsell Web Services <website@mail.loganbarsell.com>`
 5. Notifications go to `contact@loganbarsell.com` with the visitor as Reply-To.
+6. Client-facing emails (proposal share) use Reply-To `INQUIRY_NOTIFY_TO` (typically `contact@loganbarsell.com`) so replies reach your inbox.
 
 Do **not** put the Resend key in GitHub secrets or the React app.
 

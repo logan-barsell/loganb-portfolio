@@ -15,6 +15,7 @@ import Login from './pages/Login';
 import Inquiries from './pages/admin/Inquiries';
 import InquiryDetail from './pages/admin/InquiryDetail';
 import Projects from './pages/admin/Projects';
+import ProjectDetail from './pages/admin/ProjectDetail';
 import Proposals from './pages/admin/Proposals';
 import ProposalNew from './pages/admin/ProposalNew';
 import ProposalDetail from './pages/admin/ProposalDetail';
@@ -23,6 +24,7 @@ import ClientDetail from './pages/admin/ClientDetail';
 import Invoices from './pages/admin/Invoices';
 import { Privacy, Terms } from './pages/Legal';
 import NotFound from './pages/NotFound';
+import ProposalShare from './pages/ProposalShare';
 import { AuthProvider } from './auth/AuthProvider';
 import RequireAuth from './auth/RequireAuth';
 import { ToastProvider } from './toast/ToastProvider';
@@ -66,6 +68,7 @@ const App = () => {
               <Route path="proposals/new" element={<ProposalNew />} />
               <Route path="proposals/:id" element={<ProposalDetail />} />
               <Route path="projects" element={<Projects />} />
+              <Route path="projects/:id" element={<ProjectDetail />} />
               <Route path="clients" element={<Clients />} />
               <Route path="clients/:id" element={<ClientDetail />} />
               <Route path="invoices" element={<Invoices />} />
@@ -83,6 +86,7 @@ const App = () => {
               <Route path="/start" element={<Start />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/p/:token" element={<ProposalShare />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
