@@ -183,7 +183,7 @@ function mapProposalDetail(row) {
 
 function parseKickoffDate(value) {
   const raw = trimToNull(value);
-  if (!raw) return null;
+  if (!raw) return { value: null };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
     return { error: 'Kickoff date must be YYYY-MM-DD.' };
   }
