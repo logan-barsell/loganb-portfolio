@@ -8,18 +8,21 @@ import Chip from '@mui/material/Chip';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Pagination from '@mui/material/Pagination';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import AdminListPagination from '../../components/admin/AdminListPagination';
+import AdminListTable from '../../components/admin/AdminListTable';
+import {
+  adminListActionsCellSx,
+  adminListCellSx,
+  adminListCenteredCellSx,
+  adminListViewLinkSx,
+} from '../../components/admin/adminListStyles';
 import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import { fieldSx, selectMenuProps } from '../../components/forms/formStyles';
@@ -30,6 +33,10 @@ import {
   proposalStatusOptions,
   resolveStageLabel,
 } from '../../data/adminNav';
+import {
+  inquiryTypeChipSx,
+  pipelineStageChipSx,
+} from '../../data/statusChips';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
@@ -59,6 +66,8 @@ function readParams(searchParams) {
 function proposalPipelineStage(item) {
   if (item.inquiryStage) return item.inquiryStage;
   if (item.status === 'sent') return 'sent_proposal';
+  if (item.status === 'revision_requested') return 'revision_proposal';
+  if (item.status === 'accepted') return 'active_project';
   if (item.status === 'declined') return 'declined_proposal';
   if (item.status === 'draft') return 'draft_proposal';
   return null;
@@ -68,30 +77,14 @@ const pipelineChip = (item) => {
   const stage = proposalPipelineStage(item);
   const label = resolveStageLabel(stage, item.inquiryStageLabel);
   if (!label) return null;
-  return (
-    <Chip
-      label={label}
-      size="small"
-      sx={{
-        color: colors.green,
-        border: `1px solid ${colors.green}`,
-        backgroundColor: colors.greenSoft,
-        fontWeight: 600,
-      }}
-    />
-  );
+  return <Chip label={label} size="small" sx={pipelineStageChipSx(stage)} />;
 };
 
 const typeChip = (item) => (
   <Chip
     label={inquiryTypeChipLabel(item.inquiryType, item.packageLabel, item.packageSlug)}
     size="small"
-    sx={{
-      color: colors.purple,
-      border: `1px solid ${colors.purple}`,
-      backgroundColor: 'rgba(149, 99, 187, 0.12)',
-      fontWeight: 600,
-    }}
+    sx={inquiryTypeChipSx(item.inquiryType)}
   />
 );
 
@@ -144,20 +137,21 @@ const Proposals = () => {
     return () => {
       cancelled = true;
     };
-  }, [params]);
+  }, [params, toast]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     updateParams({ q: draftQ.trim() }, { resetPage: true });
   };
 
-  const cellSx = {
-    color: colors.text,
-    borderColor: 'rgba(149, 99, 187, 0.25)',
-    whiteSpace: 'nowrap',
-  };
-  const centeredCellSx = { ...cellSx, textAlign: 'center' };
-  const actionsCellSx = { ...cellSx, textAlign: 'right', width: '1%' };
+  const columns = [
+    { id: 'client', label: 'Client' },
+    { id: 'type', label: 'Type', align: 'center' },
+    { id: 'stage', label: 'Stage', align: 'center' },
+    { id: 'design', label: 'Design' },
+    { id: 'sentCreated', label: 'Sent / Created' },
+    { id: 'actions', label: '', align: 'right' },
+  ];
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -282,93 +276,47 @@ const Proposals = () => {
         ) : null}
 
         {!loading && items.length > 0 && !isCompact ? (
-          <TableContainer
-            sx={{
-              border: `1px solid rgba(149, 99, 187, 0.35)`,
-              borderRadius: 1,
-              overflowX: 'auto',
-            }}
-          >
-            <Table size="small" sx={{ minWidth: 800 }}>
-              <TableHead>
-                <TableRow>
-                  {['Client', 'Type', 'Stage', 'Design', 'Sent / Created', ''].map((label) => (
-                    <TableCell
-                      key={label || 'actions'}
-                      sx={{
-                        ...(label === ''
-                          ? actionsCellSx
-                          : ['Type', 'Stage'].includes(label)
-                            ? centeredCellSx
-                            : cellSx),
-                        color: colors.purple,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {label}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id} hover>
-                    <TableCell sx={cellSx}>
-                      <Typography sx={{ color: colors.text, fontWeight: 600 }}>
-                        {item.clientName}
-                      </Typography>
-                      <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-                        {item.clientBusinessName || item.clientEmail}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={centeredCellSx}>{typeChip(item)}</TableCell>
-                    <TableCell sx={centeredCellSx}>
-                      {pipelineChip(item) || '—'}
-                    </TableCell>
-                    <TableCell sx={cellSx}>{item.designAmountLabel}</TableCell>
-                    <TableCell sx={cellSx}>
-                      {item.sentAt ? formatDate(item.sentAt) : formatDate(item.createdAt)}
-                    </TableCell>
-                    <TableCell sx={actionsCellSx}>
-                      <Button
-                        component={RouterLink}
-                        to={`/admin/proposals/${item.id}`}
-                        size="small"
-                        sx={{ color: colors.green, textTransform: 'none' }}
-                      >
-                        View Details
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <AdminListTable columns={columns} minWidth={800}>
+            {items.map((item) => (
+              <TableRow key={item.id} hover>
+                <TableCell sx={adminListCellSx}>
+                  <Typography sx={{ color: colors.text, fontWeight: 600 }}>
+                    {item.clientName}
+                  </Typography>
+                  <Typography sx={{ color: colors.muted, fontSize: 13 }}>
+                    {item.clientBusinessName || item.clientEmail}
+                  </Typography>
+                </TableCell>
+                <TableCell sx={adminListCenteredCellSx}>{typeChip(item)}</TableCell>
+                <TableCell sx={adminListCenteredCellSx}>
+                  {pipelineChip(item) || '—'}
+                </TableCell>
+                <TableCell sx={adminListCellSx}>{item.designAmountLabel}</TableCell>
+                <TableCell sx={adminListCellSx}>
+                  {item.sentAt ? formatDate(item.sentAt) : formatDate(item.createdAt)}
+                </TableCell>
+                <TableCell sx={adminListActionsCellSx}>
+                  <Button
+                    component={RouterLink}
+                    to={`/admin/proposals/${item.id}`}
+                    size="small"
+                    sx={adminListViewLinkSx}
+                  >
+                    View Details
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </AdminListTable>
         ) : null}
 
-        {pagination.totalPages > 1 ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={pagination.totalPages}
-              page={pagination.page}
-              onChange={(_e, page) => updateParams({ page })}
-              color="primary"
-              sx={{
-                '& .MuiPaginationItem-root': { color: colors.text },
-                '& .Mui-selected': {
-                  backgroundColor: `${colors.greenSoft} !important`,
-                  color: colors.green,
-                },
-              }}
-            />
-          </Box>
-        ) : null}
-
-        {!loading && pagination.total > 0 ? (
-          <Typography sx={{ color: colors.muted, mt: 2, fontSize: 13 }}>
-            {pagination.total} total · page {pagination.page} of {pagination.totalPages}
-          </Typography>
-        ) : null}
+        <AdminListPagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          loading={loading}
+          onPageChange={(page) => updateParams({ page })}
+        />
       </Section>
     </Box>
   );

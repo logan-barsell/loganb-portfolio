@@ -77,6 +77,7 @@ function validateProject(body) {
     requestedFeatures: enforceMaxLength(trimToNull(body.requestedFeatures), LIMITS.requestedFeatures),
     inspirationLinks: enforceMaxLength(trimToNull(body.inspirationLinks), LIMITS.inspirationLinks),
     domainInfo: enforceMaxLength(trimToNull(body.domainInfo), LIMITS.domainInfo),
+    domainName: enforceMaxLength(trimToNull(body.domainName), LIMITS.domainName),
     brandingNotes: enforceMaxLength(trimToNull(body.brandingNotes), LIMITS.brandingNotes),
     contentReadiness: enforceMaxLength(trimToNull(body.contentReadiness), LIMITS.contentReadiness),
     timeline: enforceMaxLength(trimToNull(body.timeline), LIMITS.timeline),

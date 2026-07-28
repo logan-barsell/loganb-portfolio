@@ -36,6 +36,7 @@ const initialValues = {
   currentWebsite: '',
   requestedFeatures: '',
   inspirationLinks: '',
+  domainName: '',
   domainInfo: '',
   brandingNotes: '',
   contentReadiness: '',
@@ -313,6 +314,16 @@ const Start = () => {
                   value={values.currentWebsite}
                   onChange={updateField('currentWebsite')}
                   fullWidth
+                  sx={fieldSx}
+                  disabled={submitting}
+                />
+                <TextField
+                  label="Domain Name (Optional)"
+                  name="domainName"
+                  value={values.domainName}
+                  onChange={updateField('domainName')}
+                  fullWidth
+                  helperText="e.g. example.com — if you already have one or know what you want."
                   sx={fieldSx}
                   disabled={submitting}
                 />

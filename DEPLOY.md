@@ -73,6 +73,13 @@ ADMIN_SESSION_SECRET=long_random_string_at_least_32_chars
 ADMIN_SESSION_TTL_SECONDS=43200
 ADMIN_SESSION_COOKIE_NAME=lb_admin_session
 ALLOWED_ORIGIN=https://loganbarsell.com
+PUBLIC_APP_URL=https://loganbarsell.com
+
+# Client project portal (required in production; separate from admin session)
+CLIENT_SESSION_SECRET=another_long_random_string_at_least_32_chars
+CLIENT_SESSION_TTL_SECONDS=604800
+CLIENT_SESSION_COOKIE_NAME=lb_client_session
+CLIENT_PORTAL_SETUP_TTL_DAYS=7
 ```
 
 Generate the password hash on any machine with the server dependencies installed (do not commit the plaintext password):
@@ -102,7 +109,9 @@ Restart the API after editing credentials so the new hash/secret load and the `a
 sudo systemctl restart loganb-api
 ```
 
-Changing `ADMIN_PASSWORD_HASH` invalidates every existing admin session (credential fingerprint mismatch). Changing `ADMIN_SESSION_SECRET` also invalidates sessions because cookie tokens are HMAC’d with that secret.
+Changing `ADMIN_PASSWORD_HASH` invalidates every existing admin session (credential fingerprint mismatch). Changing `ADMIN_SESSION_SECRET` also invalidates sessions because cookie tokens are HMAC’d with that secret. Changing `CLIENT_SESSION_SECRET` invalidates all client project portal sessions the same way.
+
+`PUBLIC_APP_URL` must be the live site origin (e.g. `https://loganbarsell.com`). It is used in proposal share links and client portal setup emails. Missing it in production will fail API startup (`assertProductionConfig`).
 
 ### 4. Install systemd units
 
@@ -148,7 +157,7 @@ The React admin UI lives at `/login` and `/admin/*`. It is **not** linked from p
 
 ### First login / password rotation
 
-1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `ALLOWED_ORIGIN` in the API env file.
+1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CLIENT_SESSION_SECRET`, `PUBLIC_APP_URL`, and `ALLOWED_ORIGIN` in the API env file.
 2. Restart `loganb-api`.
 3. Visit `https://loganbarsell.com/login` (or `http://localhost:3000/login` locally).
 4. To rotate the password, run `npm run hash-password`, replace `ADMIN_PASSWORD_HASH`, restart the service—old sessions drop automatically.
@@ -157,7 +166,7 @@ Protected placeholders:
 
 - `/admin/inquiries` — read-only Contact + Project list/detail + attachment download
 - `/admin/projects` — accepted proposals will land here later
-- `/admin/invoices` — billing later
+- `/admin/invoices` — list/filter invoices; project detail has Mark as Started + domain; Stripe Checkout/webhooks when configured
 
 ## Local development
 
@@ -165,7 +174,7 @@ Protected placeholders:
 # terminal 1
 cp server/.env.example server/.env
 # edit RESEND_API_KEY (optional locally; submissions still save if email fails)
-# set ADMIN_EMAIL, ADMIN_PASSWORD_HASH (npm run hash-password), ADMIN_SESSION_SECRET, ALLOWED_ORIGIN=http://localhost:3000
+# set ADMIN_EMAIL, ADMIN_PASSWORD_HASH (npm run hash-password), ADMIN_SESSION_SECRET, CLIENT_SESSION_SECRET, PUBLIC_APP_URL=http://localhost:3000, ALLOWED_ORIGIN=http://localhost:3000
 cd server && npm install && npm run migrate && npm run dev
 
 # terminal 2
@@ -208,5 +217,6 @@ Local DB copies protect against accidental corruption/deletion on the same machi
 | Permission errors | ownership of `/var/lib/loganb-api` and `/etc/loganb-api.env` |
 | Admin login fails | `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` / `ADMIN_SESSION_SECRET` in `/etc/loganb-api.env`, service restarted, Origin/`ALLOWED_ORIGIN` |
 | Admin API 401 | Session expired (12h), password rotated, or cookie blocked (must be same-site HTTPS in production) |
+| Client portal setup/login fails | `CLIENT_SESSION_SECRET`, `PUBLIC_APP_URL`, setup link not expired; admin can Resend portal access |
 | Too many login attempts | Wait 15 minutes; login limiter is 5 / 15 minutes |
-| API won’t start in production | Missing required admin env vars—see `assertProductionConfig` |
+| API won’t start in production | Missing required env (`ADMIN_*`, `CLIENT_SESSION_SECRET`, `PUBLIC_APP_URL`, etc.)—see `assertProductionConfig` |

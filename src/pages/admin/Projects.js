@@ -8,23 +8,32 @@ import Chip from '@mui/material/Chip';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Pagination from '@mui/material/Pagination';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import AdminListPagination from '../../components/admin/AdminListPagination';
+import AdminListTable from '../../components/admin/AdminListTable';
+import {
+  adminListActionsCellSx,
+  adminListCellSx,
+  adminListCenteredCellSx,
+  adminListViewLinkSx,
+} from '../../components/admin/adminListStyles';
 import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import { fieldSx, selectMenuProps } from '../../components/forms/formStyles';
 import { fetchProjects } from '../../api/adminClient';
 import { projectStatusOptions, resolveStageLabel, inquiryTypeChipLabel } from '../../data/adminNav';
+import {
+  designPaymentChipSx,
+  hostingStatusChipSx,
+  inquiryTypeChipSx,
+  pipelineStageChipSx,
+} from '../../data/statusChips';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
@@ -101,49 +110,40 @@ const Projects = () => {
     return () => {
       cancelled = true;
     };
-  }, [params]);
+  }, [params, toast]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     updateParams({ q: draftQ.trim() }, { resetPage: true });
   };
 
-  const cellSx = {
-    color: colors.text,
-    borderColor: 'rgba(149, 99, 187, 0.25)',
-    whiteSpace: 'nowrap',
-  };
-  const centeredCellSx = { ...cellSx, textAlign: 'center' };
+  const columns = [
+    { id: 'client', label: 'Client' },
+    { id: 'type', label: 'Type', align: 'center' },
+    { id: 'stage', label: 'Stage', align: 'center' },
+    { id: 'design', label: 'Design', align: 'center' },
+    { id: 'hosting', label: 'Hosting', align: 'center' },
+    { id: 'created', label: 'Created' },
+    { id: 'actions', label: '', align: 'right' },
+  ];
 
   const typeChip = (label) =>
-    label ? (
-      <Chip
-        label={label}
-        size="small"
-        sx={{
-          color: colors.purple,
-          border: `1px solid ${colors.purple}`,
-          backgroundColor: 'rgba(149, 99, 187, 0.12)',
-          fontWeight: 600,
-        }}
-      />
-    ) : null;
+    label ? <Chip label={label} size="small" sx={inquiryTypeChipSx('project')} /> : null;
 
   const pipelineChip = (stage, apiLabel) => {
     const label = resolveStageLabel(stage, apiLabel);
-    return label ? (
-      <Chip
-        label={label}
-        size="small"
-        sx={{
-          color: colors.green,
-          border: `1px solid ${colors.green}`,
-          backgroundColor: colors.greenSoft,
-          fontWeight: 600,
-        }}
-      />
-    ) : null;
+    return label ? <Chip label={label} size="small" sx={pipelineStageChipSx(stage)} /> : null;
   };
+
+  const designPaymentChip = (status, label) =>
+    label ? (
+      <Chip label={`Design: ${label}`} size="small" sx={designPaymentChipSx(status)} />
+    ) : null;
+
+  const hostingStatusChip = (status, label) =>
+    status && status !== 'none' && label ? (
+      <Chip label={`Hosting: ${label}`} size="small" sx={hostingStatusChipSx(status)} />
+    ) : null;
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -258,6 +258,8 @@ const Projects = () => {
                         : null
                     )}
                     {pipelineChip(item.inquiryStage, item.inquiryStageLabel)}
+                    {designPaymentChip(item.designPaymentStatus, item.designPaymentStatusLabel)}
+                    {hostingStatusChip(item.hostingStatus, item.hostingStatusLabel)}
                   </Stack>
                   <Typography sx={{ color: colors.muted, fontSize: 13, mt: 1 }}>
                     {formatDate(item.createdAt)}
@@ -276,98 +278,63 @@ const Projects = () => {
         ) : null}
 
         {!loading && items.length > 0 && !isCompact ? (
-          <TableContainer
-            sx={{
-              border: `1px solid rgba(149, 99, 187, 0.35)`,
-              borderRadius: 1,
-              overflowX: 'auto',
-            }}
-          >
-            <Table size="small" sx={{ minWidth: 720 }}>
-              <TableHead>
-                <TableRow>
-                  {['Client', 'Type', 'Stage', 'Created', ''].map((label) => (
-                    <TableCell
-                      key={label || 'actions'}
-                      sx={{
-                        ...(['Type', 'Stage'].includes(label) ? centeredCellSx : cellSx),
-                        color: colors.purple,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {label}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id} hover>
-                    <TableCell sx={cellSx}>
-                      <Typography sx={{ color: colors.text, fontWeight: 600 }}>
-                        {item.clientName}
-                      </Typography>
-                      {item.clientBusinessName ? (
-                        <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-                          {item.clientBusinessName}
-                        </Typography>
-                      ) : null}
-                    </TableCell>
-                    <TableCell sx={centeredCellSx}>
-                      {typeChip(
-                        item.inquiryType || item.packageLabel || item.packageSlug
-                          ? inquiryTypeChipLabel(
-                              item.inquiryType,
-                              item.packageLabel,
-                              item.packageSlug
-                            )
-                          : null
-                      ) || '—'}
-                    </TableCell>
-                    <TableCell sx={centeredCellSx}>
-                      {pipelineChip(item.inquiryStage, item.inquiryStageLabel) || '—'}
-                    </TableCell>
-                    <TableCell sx={cellSx}>{formatDate(item.createdAt)}</TableCell>
-                    <TableCell sx={cellSx}>
-                      <Button
-                        component={RouterLink}
-                        to={`/admin/projects/${item.id}`}
-                        size="small"
-                        sx={{ color: colors.green, textTransform: 'none' }}
-                      >
-                        View Details
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <AdminListTable columns={columns} minWidth={960}>
+            {items.map((item) => (
+              <TableRow key={item.id} hover>
+                <TableCell sx={adminListCellSx}>
+                  <Typography sx={{ color: colors.text, fontWeight: 600 }}>
+                    {item.clientName}
+                  </Typography>
+                  {item.clientBusinessName ? (
+                    <Typography sx={{ color: colors.muted, fontSize: 13 }}>
+                      {item.clientBusinessName}
+                    </Typography>
+                  ) : null}
+                </TableCell>
+                <TableCell sx={adminListCenteredCellSx}>
+                  {typeChip(
+                    item.inquiryType || item.packageLabel || item.packageSlug
+                      ? inquiryTypeChipLabel(
+                          item.inquiryType,
+                          item.packageLabel,
+                          item.packageSlug
+                        )
+                      : null
+                  ) || '—'}
+                </TableCell>
+                <TableCell sx={adminListCenteredCellSx}>
+                  {pipelineChip(item.inquiryStage, item.inquiryStageLabel) || '—'}
+                </TableCell>
+                <TableCell sx={adminListCenteredCellSx}>
+                  {designPaymentChip(item.designPaymentStatus, item.designPaymentStatusLabel) ||
+                    '—'}
+                </TableCell>
+                <TableCell sx={adminListCenteredCellSx}>
+                  {hostingStatusChip(item.hostingStatus, item.hostingStatusLabel) || '—'}
+                </TableCell>
+                <TableCell sx={adminListCellSx}>{formatDate(item.createdAt)}</TableCell>
+                <TableCell sx={adminListActionsCellSx}>
+                  <Button
+                    component={RouterLink}
+                    to={`/admin/projects/${item.id}`}
+                    size="small"
+                    sx={adminListViewLinkSx}
+                  >
+                    View Details
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </AdminListTable>
         ) : null}
 
-        {pagination.totalPages > 1 ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={pagination.totalPages}
-              page={pagination.page}
-              onChange={(_e, page) => updateParams({ page })}
-              color="primary"
-              sx={{
-                '& .MuiPaginationItem-root': { color: colors.text },
-                '& .Mui-selected': {
-                  backgroundColor: `${colors.greenSoft} !important`,
-                  color: colors.green,
-                },
-              }}
-            />
-          </Box>
-        ) : null}
-
-        {!loading && pagination.total > 0 ? (
-          <Typography sx={{ color: colors.muted, mt: 2, fontSize: 13 }}>
-            {pagination.total} total · page {pagination.page} of {pagination.totalPages}
-          </Typography>
-        ) : null}
+        <AdminListPagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          loading={loading}
+          onPageChange={(page) => updateParams({ page })}
+        />
       </Section>
     </Box>
   );

@@ -8,7 +8,10 @@ const adminInquiriesRouter = require('./routes/adminInquiries');
 const adminClientsRouter = require('./routes/adminClients');
 const adminProposalsRouter = require('./routes/adminProposals');
 const adminProjectsRouter = require('./routes/adminProjects');
+const adminInvoicesRouter = require('./routes/adminInvoices');
 const proposalSharesRouter = require('./routes/proposalShares');
+const clientPortalRouter = require('./routes/clientPortal');
+const stripeWebhooksRouter = require('./routes/stripeWebhooks');
 const { errorHandler } = require('./middleware/errorHandler');
 
 function createApp() {
@@ -26,6 +29,9 @@ function createApp() {
     })
   );
 
+  // Stripe webhooks need the raw body — mount before any json parser on this path.
+  app.use('/api/stripe/webhook', stripeWebhooksRouter);
+
   app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 
   app.use('/api', healthRouter);
@@ -34,7 +40,9 @@ function createApp() {
   app.use('/api/admin/clients', adminClientsRouter);
   app.use('/api/admin/proposals', adminProposalsRouter);
   app.use('/api/admin/projects', adminProjectsRouter);
+  app.use('/api/admin/invoices', adminInvoicesRouter);
   app.use('/api/proposals/share', proposalSharesRouter);
+  app.use('/api/projects', clientPortalRouter);
   app.use('/api/inquiries', inquiriesRouter);
 
   app.use((_req, res) => {

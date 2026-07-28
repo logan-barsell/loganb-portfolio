@@ -4,11 +4,43 @@ const {
   INQUIRY_STAGE_LABELS,
   PACKAGE_LABELS,
   PROPOSAL_STATUS_LABELS,
+  TIMELINE_LABELS,
+  BUDGET_LABELS,
+  CONTENT_READINESS_LABELS,
+  DEFAULT_PAYMENT_SCHEDULE,
+  paymentScheduleLabel,
+  formatRevisionLimitLabel,
+  intakeOptionLabel,
+  DOMAIN_STATUSES,
+  DOMAIN_STATUS_LABELS,
+  DESIGN_PAYMENT_STATUS_LABELS,
+  HOSTING_STATUS_LABELS,
+  INVOICE_KIND_LABELS,
+  INVOICE_STATUS_LABELS,
+  LIMITS,
+  resolveHostingPlan,
+  hostingPlanFromCents,
 } = require('../constants');
-const { listAdminProjects, getAdminProjectById, listAttachmentsForInquiry } = require('../db');
+const {
+  listAdminProjects,
+  getAdminProjectById,
+  listAttachmentsForInquiry,
+  issuePortalSetupToken,
+  updateProjectDomain,
+} = require('../db');
+const {
+  listInvoicesForProject,
+  markProjectStartedByAdmin,
+  setProjectReadyForLaunch,
+  maybeActivateProject,
+  activationBlockReason,
+} = require('../billing/invoices');
+const { runActivationTickIfNeeded } = require('../billing/activationTick');
+const { sendPortalAccessEmail } = require('../email');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore } = require('../auth/cookies');
-const { createHttpError } = require('../utils/normalize');
+const { setNoStore, requireSameOrigin } = require('../auth/cookies');
+const { createHttpError, trimToNull, enforceMaxLength } = require('../utils/normalize');
+const { config } = require('../config');
 
 const router = express.Router();
 
@@ -39,6 +71,11 @@ function mapProjectListRow(row) {
     name: row.name,
     status: row.status,
     statusLabel: PROJECT_STATUS_LABELS[row.status] || row.status,
+    designPaymentStatus: row.design_payment_status || 'unpaid',
+    designPaymentStatusLabel:
+      DESIGN_PAYMENT_STATUS_LABELS[row.design_payment_status] || row.design_payment_status,
+    hostingStatus: row.hosting_status || 'none',
+    hostingStatusLabel: HOSTING_STATUS_LABELS[row.hosting_status] || row.hosting_status,
     proposalId: row.proposal_id,
     inquiryId: row.inquiry_id,
     clientId: row.client_id,
@@ -69,20 +106,65 @@ function mapAttachmentMeta(row) {
   };
 }
 
+function mapInvoice(inv, currency = 'usd') {
+  return {
+    id: inv.id,
+    kind: inv.kind,
+    kindLabel: INVOICE_KIND_LABELS[inv.kind] || inv.kind,
+    status: inv.status,
+    statusLabel: INVOICE_STATUS_LABELS[inv.status] || inv.status,
+    amountCents: inv.amount_cents,
+    amountLabel: formatMoney(inv.amount_cents, inv.currency || currency),
+    label: inv.label,
+    paidAt: toIsoUtc(inv.paid_at),
+    createdAt: toIsoUtc(inv.created_at),
+  };
+}
+
 function mapProjectDetail(row) {
   const attachments = listAttachmentsForInquiry(row.inquiry_id).map(mapAttachmentMeta);
+  const invoices = listInvoicesForProject(row.id).map((inv) =>
+    mapInvoice(inv, row.proposal_currency || 'usd')
+  );
+  const proposalLike = row.proposal_id
+    ? {
+        payment_schedule: row.proposal_payment_schedule,
+        kickoff_date: row.proposal_kickoff_date,
+      }
+    : null;
+  const blockReason = activationBlockReason(row, proposalLike, listInvoicesForProject(row.id));
+  const hostingPlan =
+    row.proposal_hosting_plan || hostingPlanFromCents(row.hosting_monthly_cents);
 
   return {
     id: row.id,
     name: row.name,
     status: row.status,
     statusLabel: PROJECT_STATUS_LABELS[row.status] || row.status,
+    designPaymentStatus: row.design_payment_status || 'unpaid',
+    designPaymentStatusLabel:
+      DESIGN_PAYMENT_STATUS_LABELS[row.design_payment_status] || row.design_payment_status,
+    hostingStatus: row.hosting_status || 'none',
+    hostingStatusLabel: HOSTING_STATUS_LABELS[row.hosting_status] || row.hosting_status,
+    hostingCancelAtPeriodEnd: Boolean(row.hosting_cancel_at_period_end),
+    hostingCurrentPeriodEnd: toIsoUtc(row.hosting_current_period_end),
+    hostingCanceledAt: toIsoUtc(row.hosting_canceled_at),
+    domainName: row.domain_name || null,
+    domainStatus: row.domain_status || 'unknown',
+    domainStatusLabel: DOMAIN_STATUS_LABELS[row.domain_status] || row.domain_status,
+    startedAt: toIsoUtc(row.started_at),
+    startedBy: row.started_by || null,
+    readyForLaunch: Boolean(row.ready_for_launch_at),
+    readyForLaunchAt: toIsoUtc(row.ready_for_launch_at),
+    activationBlockReason: blockReason,
+    stripeSubscriptionId: row.stripe_subscription_id || null,
     proposalId: row.proposal_id,
     inquiryId: row.inquiry_id,
     clientId: row.client_id,
     createdAt: toIsoUtc(row.created_at),
     updatedAt: toIsoUtc(row.updated_at),
     attachments,
+    invoices,
     client: {
       id: row.client_id,
       name: row.client_name,
@@ -97,10 +179,22 @@ function mapProjectDetail(row) {
           name: row.inquiry_name || null,
           businessName: row.inquiry_business_name || null,
           email: row.inquiry_email || null,
+          phone: row.inquiry_phone || null,
+          message: row.inquiry_message || null,
           packageSlug: row.inquiry_package_slug || null,
           packageLabel: row.inquiry_package_slug
             ? PACKAGE_LABELS[row.inquiry_package_slug] || row.inquiry_package_slug
             : null,
+          websiteGoals: row.website_goals || null,
+          currentWebsite: row.current_website || null,
+          requestedFeatures: row.requested_features || null,
+          inspirationLinks: row.inspiration_links || null,
+          domainInfo: row.domain_info || null,
+          domainName: row.inquiry_domain_name || null,
+          brandingNotes: row.branding_notes || null,
+          contentReadiness: intakeOptionLabel(CONTENT_READINESS_LABELS, row.content_readiness),
+          timeline: intakeOptionLabel(TIMELINE_LABELS, row.inquiry_timeline),
+          budget: intakeOptionLabel(BUDGET_LABELS, row.inquiry_budget),
           stage: row.inquiry_stage || null,
           stageLabel: row.inquiry_stage
             ? INQUIRY_STAGE_LABELS[row.inquiry_stage] || row.inquiry_stage
@@ -116,6 +210,23 @@ function mapProjectDetail(row) {
             ? PROPOSAL_STATUS_LABELS[row.proposal_status] || row.proposal_status
             : null,
           summary: row.proposal_summary || null,
+          scope: row.proposal_scope || null,
+          deliverables: row.proposal_deliverables || null,
+          exclusions: row.proposal_exclusions || null,
+          timelineSummary: row.proposal_timeline_summary || null,
+          paymentSchedule: row.proposal_payment_schedule || DEFAULT_PAYMENT_SCHEDULE,
+          paymentTermsLabel: paymentScheduleLabel(
+            row.proposal_payment_schedule || DEFAULT_PAYMENT_SCHEDULE
+          ),
+          paymentTerms: paymentScheduleLabel(
+            row.proposal_payment_schedule || DEFAULT_PAYMENT_SCHEDULE
+          ),
+          kickoffDate: row.proposal_kickoff_date || null,
+          revisionLimit: row.proposal_revision_limit ?? null,
+          revisionLimitLabel: formatRevisionLimitLabel(row.proposal_revision_limit),
+          declineReason: row.proposal_decline_reason || null,
+          hostingPlan,
+          hostingPlanLabel: resolveHostingPlan(hostingPlan).label,
           designAmountCents: row.design_amount_cents,
           designAmountLabel: formatMoney(row.design_amount_cents, row.proposal_currency),
           hostingMonthlyCents: row.hosting_monthly_cents,
@@ -125,6 +236,12 @@ function mapProjectDetail(row) {
           createdAt: toIsoUtc(row.proposal_created_at),
         }
       : null,
+    portal: {
+      passwordSet: Boolean(row.portal_password_hash),
+      passwordSetAt: toIsoUtc(row.portal_password_set_at),
+      setupPending: Boolean(row.portal_setup_token_hash),
+      setupExpiresAt: toIsoUtc(row.portal_setup_expires_at),
+    },
   };
 }
 
@@ -162,6 +279,8 @@ router.get('/', (req, res, next) => {
 
 router.get('/:id', (req, res, next) => {
   try {
+    runActivationTickIfNeeded();
+    maybeActivateProject(req.params.id);
     const row = getAdminProjectById(req.params.id);
     if (!row) {
       throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
@@ -171,5 +290,147 @@ router.get('/:id', (req, res, next) => {
     return next(error);
   }
 });
+
+router.patch(
+  '/:id',
+  requireSameOrigin,
+  express.json({ limit: '16kb' }),
+  (req, res, next) => {
+    try {
+      const existing = getAdminProjectById(req.params.id);
+      if (!existing) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      const errors = {};
+      const patch = {};
+
+      if (req.body?.domainName !== undefined) {
+        patch.domainName = enforceMaxLength(trimToNull(req.body.domainName), LIMITS.domainName);
+      }
+      if (req.body?.domainStatus !== undefined) {
+        const status = trimToNull(req.body.domainStatus) || 'unknown';
+        if (!DOMAIN_STATUSES.includes(status)) {
+          errors.domainStatus = 'Choose a valid domain status.';
+        } else {
+          patch.domainStatus = status;
+        }
+      }
+
+      if (Object.keys(errors).length) {
+        throw createHttpError(400, 'Please fix the highlighted fields.', 'VALIDATION_ERROR', errors);
+      }
+
+      if (Object.keys(patch).length) {
+        updateProjectDomain(req.params.id, patch);
+      }
+
+      const refreshed = getAdminProjectById(req.params.id);
+      return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/mark-started',
+  requireSameOrigin,
+  express.json({ limit: '8kb' }),
+  (req, res, next) => {
+    try {
+      const existing = getAdminProjectById(req.params.id);
+      if (!existing) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      markProjectStartedByAdmin(req.params.id);
+      const refreshed = getAdminProjectById(req.params.id);
+      return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/ready-for-launch',
+  requireSameOrigin,
+  express.json({ limit: '8kb' }),
+  (req, res, next) => {
+    try {
+      const existing = getAdminProjectById(req.params.id);
+      if (!existing) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      const ready = req.body?.ready;
+      if (typeof ready !== 'boolean') {
+        throw createHttpError(400, 'ready must be a boolean.', 'VALIDATION_ERROR');
+      }
+
+      setProjectReadyForLaunch(req.params.id, ready);
+      const refreshed = getAdminProjectById(req.params.id);
+      return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/resend-portal-access',
+  requireSameOrigin,
+  express.json({ limit: '8kb' }),
+  async (req, res, next) => {
+    try {
+      if (!config.publicAppUrl) {
+        throw createHttpError(500, 'PUBLIC_APP_URL is not configured.', 'CONFIG_ERROR');
+      }
+
+      const row = getAdminProjectById(req.params.id);
+      if (!row) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      const clientEmail = row.client_email;
+      if (!clientEmail) {
+        throw createHttpError(400, 'Client email is missing.', 'VALIDATION_ERROR');
+      }
+
+      const hadPassword = Boolean(row.portal_password_hash);
+      // Rotate setup token only — keep existing password until they finish the new setup link.
+      const portalSetup = issuePortalSetupToken(row.id, { resetPassword: false });
+      if (!portalSetup) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      await sendPortalAccessEmail(
+        {
+          name: row.client_name,
+          businessName: row.client_business_name,
+          email: clientEmail,
+        },
+        {
+          projectId: row.id,
+          rawToken: portalSetup.rawToken,
+          expiresAt: portalSetup.expiresAt,
+          isReset: hadPassword,
+        }
+      );
+
+      const refreshed = getAdminProjectById(row.id);
+      return res.status(200).json({
+        ok: true,
+        project: mapProjectDetail(refreshed),
+        message: hadPassword
+          ? 'Portal setup link emailed. Current password still works until they finish setup.'
+          : 'Portal access email sent.',
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 module.exports = router;

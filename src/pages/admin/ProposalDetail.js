@@ -16,6 +16,13 @@ import { fetchProposal, updateProposal } from '../../api/adminClient';
 import SubmitProposalModal from '../../components/admin/SubmitProposalModal';
 import InquiryAttachments from '../../components/admin/InquiryAttachments';
 import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import { inquiryTypeChipSx, pipelineStageChipSx } from '../../data/statusChips';
+import {
+  DEFAULT_PAYMENT_SCHEDULE,
+  formatRevisionLimit,
+  resolvePaymentScheduleLabel,
+} from '../../data/paymentSchedules';
+import { DEFAULT_HOSTING_PLAN, resolveHostingPlan } from '../../data/hostingPlans';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
@@ -29,6 +36,26 @@ function formatDate(iso) {
   } catch {
     return iso;
   }
+}
+
+function formatKickoffDate(ymd) {
+  if (!ymd) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+      new Date(`${ymd}T00:00:00`)
+    );
+  } catch {
+    return ymd;
+  }
+}
+
+function proposalToPipelineStage(proposal) {
+  if (proposal?.inquiry?.stage) return proposal.inquiry.stage;
+  if (proposal?.status === 'sent') return 'sent_proposal';
+  if (proposal?.status === 'revision_requested') return 'revision_proposal';
+  if (proposal?.status === 'accepted') return 'active_project';
+  if (proposal?.status === 'declined') return 'declined_proposal';
+  return 'draft_proposal';
 }
 
 function Field({ label, value }) {
@@ -79,27 +106,42 @@ function proposalToForm(proposal) {
     deliverables: proposal.deliverables || '',
     exclusions: proposal.exclusions || '',
     timelineSummary: proposal.timelineSummary || '',
-    paymentTerms: proposal.paymentTerms || '',
-    revisionLimit: proposal.revisionLimit || '',
+    kickoffDate: proposal.kickoffDate || '',
+    paymentSchedule: proposal.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
+    revisionLimit:
+      proposal.revisionLimit === null || proposal.revisionLimit === undefined
+        ? ''
+        : String(proposal.revisionLimit),
     designAmountDollars: centsToDollarsInput(proposal.designAmountCents),
-    hostingMonthlyDollars: centsToDollarsInput(proposal.hostingMonthlyCents),
+    hostingPlan: proposal.hostingPlan || DEFAULT_HOSTING_PLAN,
   };
 }
 
 function buildPayload(values) {
   const designAmountCents = dollarsToCents(values.designAmountDollars);
-  const hostingMonthlyCents = dollarsToCents(values.hostingMonthlyDollars);
+  const hostingPlan = values.hostingPlan || 'none';
   const fieldErrors = {};
 
   if (designAmountCents === null || Number.isNaN(designAmountCents) || designAmountCents <= 0) {
     fieldErrors.designAmountCents = 'Enter a valid design price greater than zero.';
   }
-  if (
-    values.hostingMonthlyDollars.trim() !== '' &&
-    (Number.isNaN(hostingMonthlyCents) || hostingMonthlyCents < 0)
-  ) {
-    fieldErrors.hostingMonthlyCents = 'Enter a valid hosting amount (0 or more).';
+  if (!hostingPlan) {
+    fieldErrors.hostingPlan = 'Choose a hosting plan.';
   }
+  if (!values.paymentSchedule) {
+    fieldErrors.paymentSchedule = 'Choose a payment schedule.';
+  }
+
+  const revisionRaw = String(values.revisionLimit ?? '').trim();
+  let revisionLimit = null;
+  if (revisionRaw !== '') {
+    revisionLimit = Number(revisionRaw);
+    if (!Number.isInteger(revisionLimit) || revisionLimit < 1) {
+      fieldErrors.revisionLimit = 'Choose a valid revision limit.';
+    }
+  }
+
+  const plan = resolveHostingPlan(hostingPlan);
 
   return {
     fieldErrors,
@@ -109,11 +151,12 @@ function buildPayload(values) {
       deliverables: values.deliverables.trim() || null,
       exclusions: values.exclusions.trim() || null,
       timelineSummary: values.timelineSummary.trim() || null,
-      paymentTerms: values.paymentTerms.trim() || null,
-      revisionLimit: values.revisionLimit.trim() || null,
+      kickoffDate: values.kickoffDate?.trim() || null,
+      paymentSchedule: values.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
+      revisionLimit,
       designAmountCents,
-      hostingMonthlyCents:
-        values.hostingMonthlyDollars.trim() === '' ? null : hostingMonthlyCents,
+      hostingPlan,
+      hostingMonthlyCents: plan.amountCents,
     },
   };
 }
@@ -169,12 +212,18 @@ const ProposalDetail = () => {
 
   const handleChange = (field, value) => {
     setValues((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors[field] || fieldErrors.designAmountCents || fieldErrors.hostingMonthlyCents) {
+    if (
+      fieldErrors[field] ||
+      fieldErrors.designAmountCents ||
+      fieldErrors.hostingPlan ||
+      fieldErrors.paymentSchedule ||
+      fieldErrors.revisionLimit ||
+      fieldErrors.kickoffDate
+    ) {
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next[field];
         if (field === 'designAmountDollars') delete next.designAmountCents;
-        if (field === 'hostingMonthlyDollars') delete next.hostingMonthlyCents;
         return next;
       });
     }
@@ -243,12 +292,7 @@ const ProposalDetail = () => {
                       proposal.inquiry.packageSlug
                     )}
                     size="small"
-                    sx={{
-                      color: colors.purple,
-                      border: `1px solid ${colors.purple}`,
-                      backgroundColor: 'rgba(149, 99, 187, 0.12)',
-                      fontWeight: 600,
-                    }}
+                    sx={inquiryTypeChipSx(proposal.inquiry.type)}
                   />
                 ) : null}
                 {proposal.inquiry?.stage ||
@@ -256,25 +300,11 @@ const ProposalDetail = () => {
                 proposal.status ? (
                   <Chip
                     label={resolveStageLabel(
-                      proposal.inquiry?.stage ||
-                        (proposal.status === 'sent'
-                          ? 'sent_proposal'
-                          : proposal.status === 'revision_requested'
-                            ? 'revision_proposal'
-                            : proposal.status === 'accepted'
-                              ? 'active_project'
-                              : proposal.status === 'declined'
-                                ? 'declined_proposal'
-                                : 'draft_proposal'),
+                      proposalToPipelineStage(proposal),
                       proposal.inquiry?.stageLabel
                     )}
                     size="small"
-                    sx={{
-                      color: colors.green,
-                      border: `1px solid ${colors.green}`,
-                      backgroundColor: colors.greenSoft,
-                      fontWeight: 600,
-                    }}
+                    sx={pipelineStageChipSx(proposalToPipelineStage(proposal))}
                   />
                 ) : null}
               </Stack>
@@ -357,23 +387,35 @@ const ProposalDetail = () => {
                   <Field label="Deliverables" value={proposal.deliverables} />
                   <Field label="Exclusions" value={proposal.exclusions} />
                   <Field label="Timeline" value={proposal.timelineSummary} />
-                  <Field label="Revision Limit" value={proposal.revisionLimit} />
-                  <Field label="Payment Terms" value={proposal.paymentTerms} />
+                  <Field label="Target Kickoff Date" value={formatKickoffDate(proposal.kickoffDate)} />
+                  <Field
+                    label="Revision Limit"
+                    value={
+                      proposal.revisionLimitLabel || formatRevisionLimit(proposal.revisionLimit)
+                    }
+                  />
+                  <Field
+                    label="Payment Terms"
+                    value={
+                      proposal.paymentTermsLabel ||
+                      resolvePaymentScheduleLabel(proposal.paymentSchedule) ||
+                      proposal.paymentTerms
+                    }
+                  />
                   <Field label="Design Price" value={proposal.designAmountLabel} />
-                  <Field label="Hosting Monthly" value={proposal.hostingMonthlyLabel} />
+                  <Field
+                    label="Hosting"
+                    value={proposal.hostingPlanLabel || proposal.hostingMonthlyLabel}
+                  />
+                  {proposal.status === 'declined' ? (
+                    <Field label="Decline Reason" value={proposal.declineReason} />
+                  ) : null}
                 </>
               )}
             </DetailBlock>
 
-            <DetailBlock title="Attachments">
-              <InquiryAttachments
-                inquiryId={proposal.inquiryId || proposal.inquiry?.id}
-                attachments={proposal.attachments}
-              />
-            </DetailBlock>
-
-            <DetailBlock title="Revision Notes">
-              {proposal.revisions?.length ? (
+            {proposal.revisions?.length ? (
+              <DetailBlock title="Revision Notes">
                 <Stack spacing={2.5}>
                   {proposal.revisions.map((note) => (
                     <Box key={note.id}>
@@ -388,16 +430,14 @@ const ProposalDetail = () => {
                     </Box>
                   ))}
                 </Stack>
-              ) : (
-                <Typography sx={{ color: colors.muted }}>
-                  No revision requests yet. Client notes from the proposal link will appear here.
-                </Typography>
-              )}
-              {proposal.status === 'declined' && proposal.declineReason ? (
-                <Box sx={{ mt: 2.5 }}>
-                  <Field label="Decline Reason" value={proposal.declineReason} />
-                </Box>
-              ) : null}
+              </DetailBlock>
+            ) : null}
+
+            <DetailBlock title="Attachments">
+              <InquiryAttachments
+                inquiryId={proposal.inquiryId || proposal.inquiry?.id}
+                attachments={proposal.attachments}
+              />
             </DetailBlock>
 
             {!editing ? (

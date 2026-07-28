@@ -5,7 +5,9 @@ const {
 
 /**
  * Derive canonical inquiry pipeline status from related rows.
- * Priority: project → latest proposal → contacted (contact only) → new.
+ * Priority:
+ *   declined proposal → Declined Proposal (even if linked project is cancelled)
+ *   project → latest proposal → contacted (contact only) → new.
  *
  * @param {{
  *   type: string,
@@ -16,6 +18,12 @@ const {
  * @returns {string}
  */
 function computePipelineStatus({ type, stage, latestProposal, project }) {
+  // Decline is a proposal decision — keep stage as Declined Proposal even when
+  // the linked project was cancelled as a side effect of that decline.
+  if (latestProposal?.status === 'declined') {
+    return 'declined_proposal';
+  }
+
   if (project && project.status) {
     return PROJECT_STATUS_TO_PIPELINE[project.status] || 'active_project';
   }

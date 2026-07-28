@@ -9,7 +9,7 @@ const {
   resolveClientForInquiry,
   setInquiryClientId,
 } = require('../db');
-const { sendInquiryNotification } = require('../email');
+const { sendInquiryNotification, sendInquiryConfirmation } = require('../email');
 const { upload, mapUploadedFiles, removeFiles } = require('../utils/uploads');
 const { inquiryLimiter } = require('../middleware/rateLimit');
 
@@ -28,6 +28,12 @@ async function notifyAndRespond(res, inquiryId) {
   } catch (error) {
     console.error(`Notification failed for inquiry ${inquiryId}:`, error.message);
     updateNotificationStatus(inquiryId, 'failed', error.message.slice(0, 500));
+  }
+
+  try {
+    await sendInquiryConfirmation(record);
+  } catch (error) {
+    console.error(`Confirmation email failed for inquiry ${inquiryId}:`, error.message);
   }
 
   return res.status(201).json({

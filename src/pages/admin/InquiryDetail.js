@@ -9,8 +9,15 @@ import Typography from '@mui/material/Typography';
 import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import InquiryAttachments from '../../components/admin/InquiryAttachments';
+import LinkedRecordCard from '../../components/admin/LinkedRecordCard';
 import { fetchInquiry, markInquiryContacted } from '../../api/adminClient';
 import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import {
+  inquiryTypeChipSx,
+  pipelineStageChipSx,
+  projectStatusChipSx,
+  proposalStatusChipSx,
+} from '../../data/statusChips';
 import {
   resolveBudgetLabel,
   resolveContentReadinessLabel,
@@ -150,22 +157,12 @@ const InquiryDetail = () => {
                 <Chip
                   label={inquiryTypeChipLabel(inquiry.type, inquiry.packageLabel, inquiry.packageSlug)}
                   size="small"
-                  sx={{
-                    color: colors.purple,
-                    border: `1px solid ${colors.purple}`,
-                    backgroundColor: 'rgba(149, 99, 187, 0.12)',
-                    fontWeight: 600,
-                  }}
+                  sx={inquiryTypeChipSx(inquiry.type)}
                 />
                 <Chip
                   label={resolveStageLabel(inquiry.stage, inquiry.stageLabel)}
                   size="small"
-                  sx={{
-                    color: colors.green,
-                    border: `1px solid ${colors.green}`,
-                    backgroundColor: colors.greenSoft,
-                    fontWeight: 600,
-                  }}
+                  sx={pipelineStageChipSx(inquiry.stage)}
                 />
                 {canMarkContacted ? (
                   <CtaButton
@@ -204,6 +201,7 @@ const InquiryDetail = () => {
                 <Field label="Current Website" value={inquiry.currentWebsite} />
                 <Field label="Requested Features" value={inquiry.requestedFeatures} />
                 <Field label="Inspiration Links" value={inquiry.inspirationLinks} />
+                <Field label="Domain Name" value={inquiry.domainName} />
                 <Field label="Domain Info" value={inquiry.domainInfo} />
                 <Field label="Branding Notes" value={inquiry.brandingNotes} />
                 <Field
@@ -221,70 +219,57 @@ const InquiryDetail = () => {
               </DetailSection>
             ) : null}
 
-            <DetailSection title="Proposals">
-              {!inquiry.clientId ? (
-                <Typography
-                  sx={{ color: colors.muted, mb: (inquiry.proposals || []).length ? 2 : 0 }}
-                >
-                  A linked client is required before creating a proposal.
-                </Typography>
-              ) : null}
-              {(inquiry.proposals || []).length === 0 ? (
-                <Typography sx={{ color: colors.muted }}>No proposals yet.</Typography>
-              ) : (
-                <Stack spacing={1.5}>
-                  {inquiry.proposals.map((proposal) => (
-                    <Box
-                      key={proposal.id}
-                      sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 1.5,
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: `1px solid rgba(149, 99, 187, 0.35)`,
-                        backgroundColor: colors.cardBg,
-                      }}
-                    >
-                      <Box>
-                        <Stack direction="row" spacing={1} sx={{ mb: 0.75, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={proposal.statusLabel}
-                            size="small"
-                            sx={{
-                              color:
-                                proposal.status === 'sent' ? colors.green : colors.purple,
-                              border: `1px solid ${
-                                proposal.status === 'sent' ? colors.green : colors.purple
-                              }`,
-                              backgroundColor:
-                                proposal.status === 'sent'
-                                  ? colors.greenSoft
-                                  : 'rgba(149, 99, 187, 0.12)',
-                              fontWeight: 600,
-                            }}
-                          />
-                        </Stack>
-                        <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-                          {formatSubmitted(proposal.sentAt || proposal.createdAt)}
-                        </Typography>
-                      </Box>
-                      <Button
-                        component={RouterLink}
-                        to={`/admin/proposals/${proposal.id}`}
-                        sx={{ color: colors.green, textTransform: 'none' }}
-                      >
-                        View Proposal
-                      </Button>
-                    </Box>
-                  ))}
-                </Stack>
-              )}
-            </DetailSection>
+            {inquiry.type === 'project' ? (
+              <DetailSection title="Proposal">
+                {!inquiry.clientId ? (
+                  <Typography
+                    sx={{ color: colors.muted, mb: (inquiry.proposals || []).length ? 2 : 0 }}
+                  >
+                    A linked client is required before creating a proposal.
+                  </Typography>
+                ) : null}
+                {(inquiry.proposals || []).length === 0 ? (
+                  <Typography sx={{ color: colors.muted }}>No proposals yet.</Typography>
+                ) : (
+                  <Stack spacing={1.5}>
+                    {inquiry.proposals.map((proposal) => (
+                      <LinkedRecordCard
+                        key={proposal.id}
+                        chips={[
+                          {
+                            label: proposal.statusLabel,
+                            sx: proposalStatusChipSx(proposal.status),
+                          },
+                        ]}
+                        dateLabel={formatSubmitted(proposal.sentAt || proposal.createdAt)}
+                        viewTo={`/admin/proposals/${proposal.id}`}
+                        viewLabel="View Proposal"
+                      />
+                    ))}
+                  </Stack>
+                )}
+              </DetailSection>
+            ) : null}
 
-            {inquiry.clientId && !(inquiry.proposals || []).length ? (
+            {inquiry.type === 'project' && inquiry.project ? (
+              <DetailSection title="Project">
+                <LinkedRecordCard
+                  chips={[
+                    {
+                      label: inquiry.project.statusLabel || inquiry.project.status,
+                      sx: projectStatusChipSx(inquiry.project.status),
+                    },
+                  ]}
+                  dateLabel={`Created ${formatSubmitted(inquiry.project.createdAt)}`}
+                  viewTo={`/admin/projects/${inquiry.project.id}`}
+                  viewLabel="View Project"
+                />
+              </DetailSection>
+            ) : null}
+
+            {inquiry.type === 'project' &&
+            inquiry.clientId &&
+            !(inquiry.proposals || []).length ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
                 <CtaButton
                   to={`/admin/proposals/new?inquiryId=${encodeURIComponent(inquiry.id)}`}

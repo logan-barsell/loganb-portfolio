@@ -185,12 +185,12 @@ function insertInquiry(payload) {
     INSERT INTO inquiries (
       id, type, name, email, message, phone, business_name, package_slug,
       website_goals, current_website, requested_features, inspiration_links,
-      domain_info, branding_notes, content_readiness, timeline, budget,
+      domain_info, domain_name, branding_notes, content_readiness, timeline, budget,
       notification_status, stage, client_id
     ) VALUES (
       @id, @type, @name, @email, @message, @phone, @business_name, @package_slug,
       @website_goals, @current_website, @requested_features, @inspiration_links,
-      @domain_info, @branding_notes, @content_readiness, @timeline, @budget,
+      @domain_info, @domain_name, @branding_notes, @content_readiness, @timeline, @budget,
       @notification_status, @stage, @client_id
     )
   `);
@@ -209,6 +209,7 @@ function insertInquiry(payload) {
     requested_features: payload.requestedFeatures ?? null,
     inspiration_links: payload.inspirationLinks ?? null,
     domain_info: payload.domainInfo ?? null,
+    domain_name: payload.domainName ?? null,
     branding_notes: payload.brandingNotes ?? null,
     content_readiness: payload.contentReadiness ?? null,
     timeline: payload.timeline ?? null,
@@ -353,7 +354,8 @@ function getLatestProposalForInquiry(inquiryId, database = getDb()) {
 function getProjectForInquiry(inquiryId, database = getDb()) {
   return database
     .prepare(
-      `SELECT id, status FROM projects
+      `SELECT id, status, name, created_at, updated_at, proposal_id, inquiry_id, client_id
+       FROM projects
        WHERE inquiry_id = ?
        ORDER BY created_at DESC, id DESC
        LIMIT 1`
@@ -446,16 +448,21 @@ function createProject(payload, database = getDb()) {
   const id = payload.id || randomUUID();
   database
     .prepare(
-      `INSERT INTO projects (id, client_id, proposal_id, inquiry_id, status, name)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO projects (
+         id, client_id, proposal_id, inquiry_id, status, name,
+         domain_name, domain_status
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       id,
       payload.clientId,
       payload.proposalId,
       payload.inquiryId ?? null,
-      payload.status || 'active',
-      payload.name
+      payload.status || 'on_hold',
+      payload.name,
+      payload.domainName ?? null,
+      payload.domainStatus || 'unknown'
     );
 
   if (payload.inquiryId) {
@@ -467,6 +474,27 @@ function createProject(payload, database = getDb()) {
 
 function getProjectById(id, database = getDb()) {
   return database.prepare(`SELECT * FROM projects WHERE id = ?`).get(id);
+}
+
+function updateProjectDomain(projectId, { domainName, domainStatus }, database = getDb()) {
+  const existing = getProjectById(projectId, database);
+  if (!existing) return null;
+
+  const nextName = domainName !== undefined ? domainName : existing.domain_name;
+  const nextStatus =
+    domainStatus !== undefined ? domainStatus : existing.domain_status || 'unknown';
+
+  database
+    .prepare(
+      `UPDATE projects SET
+         domain_name = ?,
+         domain_status = ?,
+         updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(nextName || null, nextStatus || 'unknown', projectId);
+
+  return getProjectById(projectId, database);
 }
 
 function getProjectByProposalId(proposalId, database = getDb()) {
@@ -494,7 +522,8 @@ function projectNameFromProposal(proposal) {
 }
 
 /**
- * Accept proposal: set accepted, create or reactivate project.
+ * Accept proposal: set accepted, create or reactivate project as on_hold,
+ * seed domain, create invoices, then maybe activate.
  */
 function acceptProposal(proposalId, database = getDb()) {
   const existing = getProposalById(proposalId, database);
@@ -506,6 +535,12 @@ function acceptProposal(proposalId, database = getDb()) {
     return { proposal: existing, project: getProjectByProposalId(proposalId, database), already: true };
   }
 
+  const {
+    createInvoiceRowsForProject,
+    maybeActivateProject,
+    recomputeProjectBillingStatus,
+  } = require('./billing/invoices');
+
   const run = database.transaction(() => {
     database
       .prepare(
@@ -515,31 +550,79 @@ function acceptProposal(proposalId, database = getDb()) {
       )
       .run(proposalId);
 
+    const inquiry = existing.inquiry_id
+      ? database.prepare('SELECT * FROM inquiries WHERE id = ?').get(existing.inquiry_id)
+      : null;
+    const domainName = inquiry?.domain_name || null;
+    const domainStatus = domainName ? 'client_owns' : 'unknown';
+
     let project = getProjectByProposalId(proposalId, database);
     if (project) {
-      if (project.status !== 'active') {
-        database
-          .prepare(
-            `UPDATE projects SET status = 'active', updated_at = datetime('now') WHERE id = ?`
-          )
-          .run(project.id);
-        project = database.prepare(`SELECT * FROM projects WHERE id = ?`).get(project.id);
-      }
+      database
+        .prepare(
+          `UPDATE projects SET
+             status = 'on_hold',
+             domain_name = COALESCE(?, domain_name),
+             domain_status = CASE WHEN ? IS NOT NULL THEN ? ELSE domain_status END,
+             design_payment_status = 'unpaid',
+             hosting_status = 'none',
+             started_at = NULL,
+             started_by = NULL,
+             updated_at = datetime('now')
+           WHERE id = ?`
+        )
+        .run(domainName, domainName, domainStatus, project.id);
+      project = database.prepare(`SELECT * FROM projects WHERE id = ?`).get(project.id);
     } else {
       project = createProject(
         {
           clientId: existing.client_id,
           proposalId: existing.id,
           inquiryId: existing.inquiry_id,
-          status: 'active',
+          status: 'on_hold',
           name: projectNameFromProposal(existing),
+          domainName,
+          domainStatus,
         },
         database
       );
     }
 
+    // Void prior open invoices if re-accepting a cancelled project path
+    database
+      .prepare(
+        `UPDATE invoices SET status = 'void', updated_at = datetime('now')
+         WHERE project_id = ? AND status = 'due'`
+      )
+      .run(project.id);
+
+    createInvoiceRowsForProject(
+      {
+        projectId: project.id,
+        clientId: existing.client_id,
+        proposalId: existing.id,
+        paymentSchedule: existing.payment_schedule,
+        designAmountCents: existing.design_amount_cents,
+        hostingPlan: existing.hosting_plan,
+      },
+      database
+    );
+
+    recomputeProjectBillingStatus(project.id, database);
+    maybeActivateProject(project.id, database);
+
     syncInquiryPipeline(existing.inquiry_id, database);
-    return { proposal: getProposalById(proposalId, database), project, already: false };
+    const updatedProject = getProjectByProposalId(proposalId, database);
+    let portalSetup = null;
+    if (updatedProject && !updatedProject.portal_password_hash) {
+      portalSetup = issuePortalSetupToken(updatedProject.id, { resetPassword: false }, database);
+    }
+    return {
+      proposal: getProposalById(proposalId, database),
+      project: updatedProject,
+      already: false,
+      portalSetup,
+    };
   });
 
   return run();
@@ -834,7 +917,16 @@ function getAdminClientById(id) {
     )
     .all(id);
 
-  return { ...client, inquiries, proposals };
+  const projects = database
+    .prepare(
+      `SELECT id, name, status, proposal_id, inquiry_id, created_at, updated_at
+       FROM projects
+       WHERE client_id = ?
+       ORDER BY created_at DESC, id DESC`
+    )
+    .all(id);
+
+  return { ...client, inquiries, proposals, projects };
 }
 
 function createProposal(payload, database = getDb()) {
@@ -844,11 +936,13 @@ function createProposal(payload, database = getDb()) {
       `INSERT INTO proposals (
          id, client_id, inquiry_id, status,
          summary, scope, deliverables, exclusions, timeline_summary,
-         payment_terms, revision_limit, design_amount_cents, hosting_monthly_cents, currency
+         payment_schedule, kickoff_date, revision_limit,
+         design_amount_cents, hosting_monthly_cents, hosting_plan, currency
        ) VALUES (
          @id, @client_id, @inquiry_id, @status,
          @summary, @scope, @deliverables, @exclusions, @timeline_summary,
-         @payment_terms, @revision_limit, @design_amount_cents, @hosting_monthly_cents, @currency
+         @payment_schedule, @kickoff_date, @revision_limit,
+         @design_amount_cents, @hosting_monthly_cents, @hosting_plan, @currency
        )`
     )
     .run({
@@ -861,10 +955,12 @@ function createProposal(payload, database = getDb()) {
       deliverables: payload.deliverables ?? null,
       exclusions: payload.exclusions ?? null,
       timeline_summary: payload.timelineSummary ?? null,
-      payment_terms: payload.paymentTerms ?? null,
+      payment_schedule: payload.paymentSchedule || 'deposit_50_50',
+      kickoff_date: payload.kickoffDate ?? null,
       revision_limit: payload.revisionLimit ?? null,
       design_amount_cents: payload.designAmountCents,
       hosting_monthly_cents: payload.hostingMonthlyCents ?? null,
+      hosting_plan: payload.hostingPlan || 'none',
       currency: payload.currency || 'usd',
     });
   syncInquiryPipeline(payload.inquiryId, database);
@@ -882,7 +978,9 @@ function updateProposal(id, patch, database = getDb()) {
     exclusions: patch.exclusions !== undefined ? patch.exclusions : existing.exclusions,
     timeline_summary:
       patch.timelineSummary !== undefined ? patch.timelineSummary : existing.timeline_summary,
-    payment_terms: patch.paymentTerms !== undefined ? patch.paymentTerms : existing.payment_terms,
+    payment_schedule:
+      patch.paymentSchedule !== undefined ? patch.paymentSchedule : existing.payment_schedule,
+    kickoff_date: patch.kickoffDate !== undefined ? patch.kickoffDate : existing.kickoff_date,
     revision_limit:
       patch.revisionLimit !== undefined ? patch.revisionLimit : existing.revision_limit,
     design_amount_cents:
@@ -893,6 +991,7 @@ function updateProposal(id, patch, database = getDb()) {
       patch.hostingMonthlyCents !== undefined
         ? patch.hostingMonthlyCents
         : existing.hosting_monthly_cents,
+    hosting_plan: patch.hostingPlan !== undefined ? patch.hostingPlan : existing.hosting_plan,
     status: patch.status !== undefined ? patch.status : existing.status,
     sent_at: existing.sent_at,
   };
@@ -912,10 +1011,12 @@ function updateProposal(id, patch, database = getDb()) {
          deliverables = @deliverables,
          exclusions = @exclusions,
          timeline_summary = @timeline_summary,
-         payment_terms = @payment_terms,
+         payment_schedule = @payment_schedule,
+         kickoff_date = @kickoff_date,
          revision_limit = @revision_limit,
          design_amount_cents = @design_amount_cents,
          hosting_monthly_cents = @hosting_monthly_cents,
+         hosting_plan = @hosting_plan,
          status = @status,
          sent_at = @sent_at,
          updated_at = datetime('now')
@@ -1180,6 +1281,7 @@ function listAdminProjects({
       `SELECT
          p.id, p.name, p.status, p.proposal_id, p.inquiry_id, p.client_id,
          p.created_at, p.updated_at,
+         p.design_payment_status, p.hosting_status,
          c.name AS client_name, c.business_name AS client_business_name, c.email AS client_email,
          i.stage AS inquiry_stage, i.type AS inquiry_type,
          i.package_slug AS inquiry_package_slug
@@ -1207,14 +1309,32 @@ function getAdminProjectById(id, database = getDb()) {
       `SELECT
          p.id, p.name, p.status, p.proposal_id, p.inquiry_id, p.client_id,
          p.created_at, p.updated_at,
+         p.portal_password_hash, p.portal_setup_token_hash, p.portal_setup_expires_at,
+         p.portal_password_set_at,
+         p.domain_name, p.domain_status, p.design_payment_status, p.hosting_status,
+         p.stripe_subscription_id, p.started_at, p.started_by,
+         p.ready_for_launch_at,
+         p.stripe_hosting_price_id, p.hosting_cancel_at_period_end,
+         p.hosting_current_period_end, p.hosting_canceled_at,
          c.name AS client_name, c.business_name AS client_business_name,
          c.email AS client_email, c.phone AS client_phone,
          i.stage AS inquiry_stage, i.type AS inquiry_type,
          i.package_slug AS inquiry_package_slug, i.name AS inquiry_name,
          i.business_name AS inquiry_business_name, i.email AS inquiry_email,
+         i.message AS inquiry_message, i.phone AS inquiry_phone,
+         i.website_goals, i.current_website, i.requested_features,
+         i.inspiration_links, i.domain_info, i.domain_name AS inquiry_domain_name,
+         i.branding_notes,
+         i.content_readiness, i.timeline AS inquiry_timeline, i.budget AS inquiry_budget,
          i.created_at AS inquiry_created_at,
          pr.status AS proposal_status, pr.design_amount_cents, pr.hosting_monthly_cents,
+         pr.hosting_plan AS proposal_hosting_plan,
          pr.currency AS proposal_currency, pr.summary AS proposal_summary,
+         pr.scope AS proposal_scope, pr.deliverables AS proposal_deliverables,
+         pr.exclusions AS proposal_exclusions, pr.timeline_summary AS proposal_timeline_summary,
+         pr.payment_schedule AS proposal_payment_schedule, pr.kickoff_date AS proposal_kickoff_date,
+         pr.revision_limit AS proposal_revision_limit,
+         pr.decline_reason AS proposal_decline_reason,
          pr.sent_at AS proposal_sent_at, pr.created_at AS proposal_created_at
        FROM projects p
        INNER JOIN clients c ON c.id = p.client_id
@@ -1227,6 +1347,159 @@ function getAdminProjectById(id, database = getDb()) {
   return row || null;
 }
 
+function hashPortalSetupToken(rawToken) {
+  return createHash('sha256').update(String(rawToken)).digest('hex');
+}
+
+function sqliteExpiryDaysFromNow(days) {
+  const ms = Date.now() + Number(days) * 24 * 60 * 60 * 1000;
+  return new Date(ms).toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
+}
+
+/**
+ * Issue (or rotate) portal setup token.
+ * When resetPassword is true, clears existing password and sessions immediately
+ * (hard revoke). Prefer resetPassword: false for admin resend — password is
+ * replaced when they complete setup via completePortalPasswordSetup.
+ * Returns { rawToken, expiresAt }.
+ */
+function issuePortalSetupToken(projectId, { resetPassword = false } = {}, database = getDb()) {
+  const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  if (!project) return null;
+
+  const rawToken = randomBytes(32).toString('base64url');
+  const tokenHash = hashPortalSetupToken(rawToken);
+  const expiresAt = sqliteExpiryDaysFromNow(config.clientPortalSetupTtlDays);
+
+  if (resetPassword) {
+    database
+      .prepare(
+        `UPDATE projects SET
+           portal_password_hash = NULL,
+           portal_password_set_at = NULL,
+           portal_setup_token_hash = ?,
+           portal_setup_expires_at = ?,
+           updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(tokenHash, expiresAt, projectId);
+    deleteClientSessionsForProject(projectId, database);
+  } else {
+    database
+      .prepare(
+        `UPDATE projects SET
+           portal_setup_token_hash = ?,
+           portal_setup_expires_at = ?,
+           updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(tokenHash, expiresAt, projectId);
+  }
+
+  return { rawToken, expiresAt };
+}
+
+function getProjectForPortalSetup(projectId, rawToken, database = getDb()) {
+  const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  if (!project || !project.portal_setup_token_hash || !rawToken) return null;
+
+  const tokenHash = hashPortalSetupToken(rawToken);
+  if (tokenHash !== project.portal_setup_token_hash) return null;
+
+  const expiresMs = Date.parse(
+    /Z$|[+-]\d{2}:?\d{2}$/.test(project.portal_setup_expires_at)
+      ? project.portal_setup_expires_at
+      : `${String(project.portal_setup_expires_at).replace(' ', 'T')}Z`
+  );
+  if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) {
+    return { expired: true, project };
+  }
+
+  return { expired: false, project };
+}
+
+function completePortalPasswordSetup(projectId, passwordHash, database = getDb()) {
+  const setAt = new Date().toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
+  database
+    .prepare(
+      `UPDATE projects SET
+         portal_password_hash = ?,
+         portal_password_set_at = ?,
+         portal_setup_token_hash = NULL,
+         portal_setup_expires_at = NULL,
+         updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(passwordHash, setAt, projectId);
+  deleteClientSessionsForProject(projectId, database);
+  return database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+}
+
+function createClientSession({ tokenHash, projectId, expiresAt }, database = getDb()) {
+  database
+    .prepare(
+      `INSERT INTO client_sessions (token_hash, project_id, expires_at)
+       VALUES (?, ?, ?)`
+    )
+    .run(tokenHash, projectId, expiresAt);
+}
+
+function getClientSessionByTokenHash(tokenHash, database = getDb()) {
+  return database.prepare('SELECT * FROM client_sessions WHERE token_hash = ?').get(tokenHash);
+}
+
+function touchClientSession(tokenHash, database = getDb()) {
+  database
+    .prepare(
+      `UPDATE client_sessions SET last_seen_at = datetime('now') WHERE token_hash = ?`
+    )
+    .run(tokenHash);
+}
+
+function deleteClientSessionByTokenHash(tokenHash, database = getDb()) {
+  database.prepare('DELETE FROM client_sessions WHERE token_hash = ?').run(tokenHash);
+}
+
+function deleteExpiredClientSessions(database = getDb()) {
+  database.prepare(`DELETE FROM client_sessions WHERE expires_at <= datetime('now')`).run();
+}
+
+function deleteClientSessionsForProject(projectId, database = getDb()) {
+  database.prepare('DELETE FROM client_sessions WHERE project_id = ?').run(projectId);
+}
+
+function deleteAttachmentById(attachmentId, database = getDb()) {
+  const row = database.prepare('SELECT * FROM attachments WHERE id = ?').get(attachmentId);
+  if (!row) return null;
+  database.prepare('DELETE FROM attachments WHERE id = ?').run(attachmentId);
+  return row;
+}
+
+function getPortalProjectBundle(projectId, database = getDb()) {
+  const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  if (!project) return null;
+
+  const client = database
+    .prepare(
+      `SELECT id, name, email, phone, business_name, stripe_customer_id FROM clients WHERE id = ?`
+    )
+    .get(project.client_id);
+
+  const inquiry = project.inquiry_id
+    ? database.prepare('SELECT * FROM inquiries WHERE id = ?').get(project.inquiry_id)
+    : null;
+
+  const proposal = project.proposal_id
+    ? database.prepare('SELECT * FROM proposals WHERE id = ?').get(project.proposal_id)
+    : null;
+
+  const attachments = project.inquiry_id
+    ? listAttachmentsForInquiry(project.inquiry_id, database)
+    : [];
+
+  return { project, client, inquiry, proposal, attachments };
+}
+
 module.exports = {
   getDb,
   closeDb,
@@ -1237,13 +1510,27 @@ module.exports = {
   markInquiryContacted,
   createProject,
   updateProjectStatus,
+  updateProjectDomain,
   getProjectById,
   getProjectByProposalId,
+  getProjectForInquiry,
   getAdminProjectById,
   acceptProposal,
   declineProposal,
   requestProposalRevision,
   listRevisionRequestsForProposal,
+  issuePortalSetupToken,
+  getProjectForPortalSetup,
+  completePortalPasswordSetup,
+  hashPortalSetupToken,
+  createClientSession,
+  getClientSessionByTokenHash,
+  touchClientSession,
+  deleteClientSessionByTokenHash,
+  deleteExpiredClientSessions,
+  deleteClientSessionsForProject,
+  getPortalProjectBundle,
+  deleteAttachmentById,
   insertInquiry,
   insertAttachments,
   updateNotificationStatus,

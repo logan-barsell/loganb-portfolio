@@ -4,6 +4,14 @@ const {
   PROPOSAL_STATUS_LABELS,
   PROPOSAL_STATUSES,
   INQUIRY_STAGE_LABELS,
+  PAYMENT_SCHEDULES,
+  DEFAULT_PAYMENT_SCHEDULE,
+  paymentScheduleLabel,
+  formatRevisionLimitLabel,
+  HOSTING_PLANS,
+  DEFAULT_HOSTING_PLAN,
+  resolveHostingPlan,
+  hostingPlanFromCents,
   LIMITS,
 } = require('../constants');
 const {
@@ -64,6 +72,10 @@ function mapProposalListRow(row) {
     designAmountLabel: formatMoney(row.design_amount_cents, row.currency),
     hostingMonthlyCents: row.hosting_monthly_cents,
     hostingMonthlyLabel: formatMoney(row.hosting_monthly_cents, row.currency),
+    hostingPlan: row.hosting_plan || hostingPlanFromCents(row.hosting_monthly_cents),
+    hostingPlanLabel: resolveHostingPlan(
+      row.hosting_plan || hostingPlanFromCents(row.hosting_monthly_cents)
+    ).label,
     currency: row.currency,
     sentAt: toIsoUtc(row.sent_at),
     createdAt: toIsoUtc(row.created_at),
@@ -112,12 +124,21 @@ function mapProposalDetail(row) {
     deliverables: row.deliverables,
     exclusions: row.exclusions,
     timelineSummary: row.timeline_summary,
-    paymentTerms: row.payment_terms,
-    revisionLimit: row.revision_limit,
+    paymentSchedule: row.payment_schedule || DEFAULT_PAYMENT_SCHEDULE,
+    paymentTermsLabel: paymentScheduleLabel(row.payment_schedule || DEFAULT_PAYMENT_SCHEDULE),
+    /** @deprecated use paymentTermsLabel */
+    paymentTerms: paymentScheduleLabel(row.payment_schedule || DEFAULT_PAYMENT_SCHEDULE),
+    kickoffDate: row.kickoff_date || null,
+    revisionLimit: row.revision_limit ?? null,
+    revisionLimitLabel: formatRevisionLimitLabel(row.revision_limit),
     designAmountCents: row.design_amount_cents,
     designAmountLabel: formatMoney(row.design_amount_cents, row.currency),
     hostingMonthlyCents: row.hosting_monthly_cents,
     hostingMonthlyLabel: formatMoney(row.hosting_monthly_cents, row.currency),
+    hostingPlan: row.hosting_plan || hostingPlanFromCents(row.hosting_monthly_cents),
+    hostingPlanLabel: resolveHostingPlan(
+      row.hosting_plan || hostingPlanFromCents(row.hosting_monthly_cents)
+    ).label,
     currency: row.currency,
     sentAt: toIsoUtc(row.sent_at),
     declineReason: row.decline_reason || null,
@@ -160,6 +181,33 @@ function mapProposalDetail(row) {
   };
 }
 
+function parseKickoffDate(value) {
+  const raw = trimToNull(value);
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return { error: 'Kickoff date must be YYYY-MM-DD.' };
+  }
+  const ms = Date.parse(`${raw}T00:00:00Z`);
+  if (!Number.isFinite(ms)) {
+    return { error: 'Kickoff date must be a valid calendar date.' };
+  }
+  return { value: raw };
+}
+
+function parseRevisionLimit(value, { partial = false } = {}) {
+  if (value === undefined) {
+    return partial ? { omitted: true } : { value: 2 };
+  }
+  if (value === null || value === '') {
+    return { value: null };
+  }
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1 || n > 99) {
+    return { error: 'Revision limit must be a positive whole number, or empty for unlimited.' };
+  }
+  return { value: n };
+}
+
 function parseProposalBody(body, { partial = false } = {}) {
   const errors = {};
 
@@ -171,14 +219,30 @@ function parseProposalBody(body, { partial = false } = {}) {
     trimToNull(body.timelineSummary),
     LIMITS.proposalTimeline
   );
-  const paymentTerms = enforceMaxLength(
-    trimToNull(body.paymentTerms),
-    LIMITS.proposalPaymentTerms
-  );
-  const revisionLimit = enforceMaxLength(
-    trimToNull(body.revisionLimit),
-    LIMITS.proposalRevisionLimit
-  );
+
+  let paymentSchedule;
+  if (body.paymentSchedule !== undefined && body.paymentSchedule !== null && body.paymentSchedule !== '') {
+    paymentSchedule = String(body.paymentSchedule);
+    if (!PAYMENT_SCHEDULES.includes(paymentSchedule)) {
+      errors.paymentSchedule = 'Choose a valid payment schedule.';
+    }
+  } else if (!partial) {
+    paymentSchedule = DEFAULT_PAYMENT_SCHEDULE;
+  }
+
+  let kickoffDate;
+  if (body.kickoffDate !== undefined) {
+    const parsed = parseKickoffDate(body.kickoffDate);
+    if (parsed.error) errors.kickoffDate = parsed.error;
+    else kickoffDate = parsed.value;
+  }
+
+  let revisionLimit;
+  if (body.revisionLimit !== undefined || !partial) {
+    const parsed = parseRevisionLimit(body.revisionLimit, { partial });
+    if (parsed.error) errors.revisionLimit = parsed.error;
+    else if (!parsed.omitted) revisionLimit = parsed.value;
+  }
 
   let designAmountCents;
   if (body.designAmountCents !== undefined && body.designAmountCents !== null && body.designAmountCents !== '') {
@@ -190,15 +254,30 @@ function parseProposalBody(body, { partial = false } = {}) {
     errors.designAmountCents = 'Design amount is required.';
   }
 
+  let hostingPlan;
   let hostingMonthlyCents = null;
-  if (
-    body.hostingMonthlyCents !== undefined &&
-    body.hostingMonthlyCents !== null &&
-    body.hostingMonthlyCents !== ''
-  ) {
-    hostingMonthlyCents = Number(body.hostingMonthlyCents);
-    if (!Number.isInteger(hostingMonthlyCents) || hostingMonthlyCents < 0) {
-      errors.hostingMonthlyCents = 'Hosting amount must be a whole number of cents (0 or more).';
+  if (body.hostingPlan !== undefined || body.hostingMonthlyCents !== undefined || !partial) {
+    if (body.hostingPlan !== undefined && body.hostingPlan !== null && body.hostingPlan !== '') {
+      hostingPlan = String(body.hostingPlan);
+      if (!HOSTING_PLANS.includes(hostingPlan)) {
+        errors.hostingPlan = 'Choose a valid hosting plan.';
+      } else {
+        hostingMonthlyCents = resolveHostingPlan(hostingPlan).amountCents;
+      }
+    } else if (
+      body.hostingMonthlyCents !== undefined &&
+      body.hostingMonthlyCents !== null &&
+      body.hostingMonthlyCents !== ''
+    ) {
+      hostingMonthlyCents = Number(body.hostingMonthlyCents);
+      if (!Number.isInteger(hostingMonthlyCents) || hostingMonthlyCents < 0) {
+        errors.hostingMonthlyCents = 'Hosting amount must be a whole number of cents (0 or more).';
+      } else {
+        hostingPlan = hostingPlanFromCents(hostingMonthlyCents);
+      }
+    } else if (!partial) {
+      hostingPlan = DEFAULT_HOSTING_PLAN;
+      hostingMonthlyCents = resolveHostingPlan(hostingPlan).amountCents;
     }
   }
 
@@ -212,16 +291,15 @@ function parseProposalBody(body, { partial = false } = {}) {
     deliverables,
     exclusions,
     timelineSummary,
-    paymentTerms,
-    revisionLimit,
   };
 
+  if (paymentSchedule !== undefined) out.paymentSchedule = paymentSchedule;
+  if (body.kickoffDate !== undefined) out.kickoffDate = kickoffDate;
+  if (revisionLimit !== undefined) out.revisionLimit = revisionLimit;
+
   if (designAmountCents !== undefined) out.designAmountCents = designAmountCents;
-  if (
-    body.hostingMonthlyCents !== undefined ||
-    body.hostingMonthlyCents === null ||
-    body.hostingMonthlyCents === ''
-  ) {
+  if (hostingPlan !== undefined) {
+    out.hostingPlan = hostingPlan;
     out.hostingMonthlyCents = hostingMonthlyCents;
   }
 

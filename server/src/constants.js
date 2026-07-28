@@ -96,6 +96,44 @@ const PROPOSAL_STATUS_LABELS = {
   declined: 'Declined',
 };
 
+const PAYMENT_SCHEDULES = ['deposit_50_50', 'full_upfront', 'full_before_launch'];
+
+const PAYMENT_SCHEDULE_LABELS = {
+  deposit_50_50: '50% deposit to begin; 50% before launch',
+  full_upfront: '100% due before work begins',
+  full_before_launch: '100% due before launch',
+};
+
+const DEFAULT_PAYMENT_SCHEDULE = 'deposit_50_50';
+
+function paymentScheduleLabel(schedule) {
+  if (!schedule) return null;
+  return PAYMENT_SCHEDULE_LABELS[schedule] || schedule;
+}
+
+function billingLineItemsForSchedule(schedule, designCents) {
+  if (designCents === null || designCents === undefined) return [];
+  const total = Number(designCents);
+  if (!Number.isFinite(total) || total < 0) return [];
+
+  if (schedule === 'deposit_50_50') {
+    const deposit = Math.round(total / 2);
+    return [
+      { key: 'deposit', label: 'Deposit', amountCents: deposit },
+      { key: 'balance', label: 'Remaining Balance', amountCents: total - deposit },
+    ];
+  }
+
+  return [{ key: 'full', label: 'Full Amount', amountCents: total }];
+}
+
+function formatRevisionLimitLabel(limit) {
+  if (limit === null || limit === undefined) return 'Unlimited';
+  const n = Number(limit);
+  if (!Number.isFinite(n) || n <= 0) return 'Unlimited';
+  return n === 1 ? '1 Round' : `${n} Rounds`;
+}
+
 /** Client-facing decision labels on the share page. */
 const CLIENT_PROPOSAL_STATUS_LABELS = {
   sent: null,
@@ -127,6 +165,88 @@ const PROJECT_STATUS_TO_PIPELINE = {
   completed: 'completed_project',
   cancelled: 'cancelled_project',
 };
+
+const HOSTING_PLANS = ['none', 'hosting_39', 'hosting_25', 'hosting_10'];
+
+const HOSTING_PLAN_META = {
+  none: { key: 'none', label: 'No Managed Hosting', amountCents: null, defaultPriceId: null },
+  hosting_39: {
+    key: 'hosting_39',
+    label: 'Managed Hosting — $39/month',
+    amountCents: 3900,
+    defaultPriceId: 'price_temp_hosting_39',
+  },
+  hosting_25: {
+    key: 'hosting_25',
+    label: 'Managed Hosting — $25/month',
+    amountCents: 2500,
+    defaultPriceId: 'price_temp_hosting_25',
+  },
+  hosting_10: {
+    key: 'hosting_10',
+    label: 'Managed Hosting — $10/month',
+    amountCents: 1000,
+    defaultPriceId: 'price_temp_hosting_10',
+  },
+};
+
+const DEFAULT_HOSTING_PLAN = 'hosting_39';
+
+const DOMAIN_STATUSES = ['unknown', 'client_owns', 'needs_purchase', 'connected'];
+
+const DOMAIN_STATUS_LABELS = {
+  unknown: 'Unknown',
+  client_owns: 'Client Owns',
+  needs_purchase: 'Needs Purchase',
+  connected: 'Connected',
+};
+
+const DESIGN_PAYMENT_STATUSES = ['unpaid', 'partial', 'paid'];
+
+const DESIGN_PAYMENT_STATUS_LABELS = {
+  unpaid: 'Unpaid',
+  partial: 'Partial',
+  paid: 'Paid',
+};
+
+const HOSTING_STATUSES = ['none', 'active', 'overdue'];
+
+const HOSTING_STATUS_LABELS = {
+  none: 'None',
+  active: 'Active',
+  overdue: 'Overdue',
+};
+
+const INVOICE_KINDS = ['deposit', 'balance', 'full', 'hosting'];
+
+const INVOICE_KIND_LABELS = {
+  deposit: 'Deposit',
+  balance: 'Remaining Balance',
+  full: 'Full Amount',
+  hosting: 'Hosting Subscription',
+};
+
+const INVOICE_STATUSES = ['due', 'paid', 'void'];
+
+const INVOICE_STATUS_LABELS = {
+  due: 'Due',
+  paid: 'Paid',
+  void: 'Void',
+};
+
+function resolveHostingPlan(plan) {
+  if (plan && HOSTING_PLAN_META[plan]) return HOSTING_PLAN_META[plan];
+  return HOSTING_PLAN_META.none;
+}
+
+function hostingPlanFromCents(cents) {
+  if (cents === null || cents === undefined) return 'none';
+  const n = Number(cents);
+  if (!Number.isFinite(n) || n <= 0) return 'none';
+  if (n <= 1000) return 'hosting_10';
+  if (n <= 2500) return 'hosting_25';
+  return 'hosting_39';
+}
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -166,6 +286,7 @@ const LIMITS = {
   requestedFeatures: 3000,
   inspirationLinks: 2000,
   domainInfo: 500,
+  domainName: 255,
   brandingNotes: 2000,
   contentReadiness: 80,
   timeline: 80,
@@ -178,7 +299,6 @@ const LIMITS = {
   proposalExclusions: 4000,
   proposalTimeline: 2000,
   proposalPaymentTerms: 4000,
-  proposalRevisionLimit: 200,
   proposalEmailSubject: 200,
   proposalEmailMessage: 5000,
   proposalRevisionMessage: 4000,
@@ -197,11 +317,32 @@ module.exports = {
   PIPELINE_SORT_ORDER,
   PROPOSAL_STATUSES,
   PROPOSAL_STATUS_LABELS,
+  PAYMENT_SCHEDULES,
+  PAYMENT_SCHEDULE_LABELS,
+  DEFAULT_PAYMENT_SCHEDULE,
+  paymentScheduleLabel,
+  billingLineItemsForSchedule,
+  formatRevisionLimitLabel,
   CLIENT_PROPOSAL_STATUS_LABELS,
   PROPOSAL_STATUS_TO_PIPELINE,
   PROJECT_STATUSES,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUS_TO_PIPELINE,
+  HOSTING_PLANS,
+  HOSTING_PLAN_META,
+  DEFAULT_HOSTING_PLAN,
+  resolveHostingPlan,
+  hostingPlanFromCents,
+  DOMAIN_STATUSES,
+  DOMAIN_STATUS_LABELS,
+  DESIGN_PAYMENT_STATUSES,
+  DESIGN_PAYMENT_STATUS_LABELS,
+  HOSTING_STATUSES,
+  HOSTING_STATUS_LABELS,
+  INVOICE_KINDS,
+  INVOICE_KIND_LABELS,
+  INVOICE_STATUSES,
+  INVOICE_STATUS_LABELS,
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
   MAX_FILES,

@@ -9,25 +9,21 @@ import Typography from '@mui/material/Typography';
 import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import ProposalFormFields, {
-  centsToDollarsInput,
   dollarsToCents,
 } from '../../components/admin/ProposalFormFields';
 import { createProposal, fetchClient, fetchInquiry } from '../../api/adminClient';
 import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import { inquiryTypeChipSx, pipelineStageChipSx } from '../../data/statusChips';
 import {
   resolveBudgetLabel,
   resolveContentReadinessLabel,
   resolveTimelineLabel,
 } from '../../data/intakeOptions';
-import { sitePackages } from '../../data/pricing';
+import { DEFAULT_PAYMENT_SCHEDULE } from '../../data/paymentSchedules';
+import { DEFAULT_HOSTING_PLAN, resolveHostingPlan } from '../../data/hostingPlans';
+import { seedProposalFormFromInquiry } from '../../data/proposalDefaults';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
-
-const PACKAGE_CENTS = {
-  starter: 90000,
-  business: 150000,
-  growth: 250000,
-};
 
 const emptyForm = {
   summary: '',
@@ -35,10 +31,11 @@ const emptyForm = {
   deliverables: '',
   exclusions: '',
   timelineSummary: '',
-  paymentTerms: '50% deposit to begin; balance due before launch.',
-  revisionLimit: '2 rounds of revisions',
+  kickoffDate: '',
+  paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
+  revisionLimit: '2',
   designAmountDollars: '',
-  hostingMonthlyDollars: '39',
+  hostingPlan: DEFAULT_HOSTING_PLAN,
 };
 
 function formatDate(iso) {
@@ -82,37 +79,31 @@ function DetailBlock({ title, children }) {
   );
 }
 
-function seedFromInquiry(inquiry) {
-  const pkg = sitePackages.find((p) => p.id === inquiry.packageSlug);
-  const packageLabel = inquiry.packageLabel || pkg?.name || '';
-  const designCents = PACKAGE_CENTS[inquiry.packageSlug] || null;
-
-  return {
-    ...emptyForm,
-    summary: packageLabel
-      ? `${packageLabel} website proposal for ${inquiry.businessName || inquiry.name}.`
-      : `Website proposal for ${inquiry.businessName || inquiry.name}.`,
-    scope: inquiry.websiteGoals || '',
-    deliverables: pkg?.highlights?.join('\n') || '',
-    timelineSummary: resolveTimelineLabel(inquiry.timeline) || '',
-    designAmountDollars: designCents ? centsToDollarsInput(designCents) : '',
-  };
-}
-
 function buildPayload(values) {
   const designAmountCents = dollarsToCents(values.designAmountDollars);
-  const hostingMonthlyCents = dollarsToCents(values.hostingMonthlyDollars);
+  const hostingPlan = values.hostingPlan || 'none';
   const fieldErrors = {};
 
   if (designAmountCents === null || Number.isNaN(designAmountCents) || designAmountCents <= 0) {
     fieldErrors.designAmountCents = 'Enter a valid design price greater than zero.';
   }
-  if (
-    values.hostingMonthlyDollars.trim() !== '' &&
-    (Number.isNaN(hostingMonthlyCents) || hostingMonthlyCents < 0)
-  ) {
-    fieldErrors.hostingMonthlyCents = 'Enter a valid hosting amount (0 or more).';
+  if (!resolveHostingPlan(hostingPlan) || !hostingPlan) {
+    fieldErrors.hostingPlan = 'Choose a hosting plan.';
   }
+  if (!values.paymentSchedule) {
+    fieldErrors.paymentSchedule = 'Choose a payment schedule.';
+  }
+
+  const revisionRaw = String(values.revisionLimit ?? '').trim();
+  let revisionLimit = null;
+  if (revisionRaw !== '') {
+    revisionLimit = Number(revisionRaw);
+    if (!Number.isInteger(revisionLimit) || revisionLimit < 1) {
+      fieldErrors.revisionLimit = 'Choose a valid revision limit.';
+    }
+  }
+
+  const plan = resolveHostingPlan(hostingPlan);
 
   return {
     fieldErrors,
@@ -122,28 +113,15 @@ function buildPayload(values) {
       deliverables: values.deliverables.trim() || null,
       exclusions: values.exclusions.trim() || null,
       timelineSummary: values.timelineSummary.trim() || null,
-      paymentTerms: values.paymentTerms.trim() || null,
-      revisionLimit: values.revisionLimit.trim() || null,
+      kickoffDate: values.kickoffDate?.trim() || null,
+      paymentSchedule: values.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
+      revisionLimit,
       designAmountCents,
-      hostingMonthlyCents:
-        values.hostingMonthlyDollars.trim() === '' ? null : hostingMonthlyCents,
+      hostingPlan,
+      hostingMonthlyCents: plan.amountCents,
     },
   };
 }
-
-const typeChipSx = {
-  color: colors.purple,
-  border: `1px solid ${colors.purple}`,
-  backgroundColor: 'rgba(149, 99, 187, 0.12)',
-  fontWeight: 600,
-};
-
-const stageChipSx = {
-  color: colors.green,
-  border: `1px solid ${colors.green}`,
-  backgroundColor: colors.greenSoft,
-  fontWeight: 600,
-};
 
 const ProposalNew = () => {
   const toast = useToast();
@@ -185,7 +163,7 @@ const ProposalNew = () => {
           return;
         }
         setInquiry(next);
-        setValues(seedFromInquiry(next));
+        setValues(seedProposalFormFromInquiry(next));
         try {
           const clientData = await fetchClient(next.clientId);
           if (!cancelled) setClient(clientData.client || null);
@@ -206,16 +184,22 @@ const ProposalNew = () => {
     return () => {
       cancelled = true;
     };
-  }, [inquiryId, toast]);
+  }, [inquiryId, toast, navigate]);
 
   const handleChange = (field, value) => {
     setValues((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors[field] || fieldErrors.designAmountCents || fieldErrors.hostingMonthlyCents) {
+    if (
+      fieldErrors[field] ||
+      fieldErrors.designAmountCents ||
+      fieldErrors.hostingPlan ||
+      fieldErrors.paymentSchedule ||
+      fieldErrors.revisionLimit ||
+      fieldErrors.kickoffDate
+    ) {
       setFieldErrors((prev) => {
         const next = { ...prev };
         delete next[field];
         if (field === 'designAmountDollars') delete next.designAmountCents;
-        if (field === 'hostingMonthlyDollars') delete next.hostingMonthlyCents;
         return next;
       });
     }
@@ -279,12 +263,12 @@ const ProposalNew = () => {
                   inquiry.packageSlug
                 )}
                 size="small"
-                sx={typeChipSx}
+                sx={inquiryTypeChipSx(inquiry.type)}
               />
               <Chip
                 label={resolveStageLabel(inquiry.stage, inquiry.stageLabel)}
                 size="small"
-                sx={stageChipSx}
+                sx={pipelineStageChipSx(inquiry.stage)}
               />
             </Stack>
 

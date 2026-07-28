@@ -97,7 +97,18 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
         }}
       >
         {isResend ? 'Resend Proposal' : 'Submit Proposal'}
-        <IconButton aria-label="Close" onClick={handleClose} disabled={sending} sx={{ color: colors.muted }}>
+        <IconButton
+          aria-label="Close"
+          onClick={handleClose}
+          disabled={sending}
+          sx={{
+            color: colors.muted,
+            '&.Mui-disabled': {
+              opacity: 1,
+              color: colors.muted,
+            },
+          }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>

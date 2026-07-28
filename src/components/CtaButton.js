@@ -8,6 +8,14 @@ const baseSx = {
   fontWeight: 600,
 };
 
+/** Visible on dark bg — MUI’s default disabled opacity (~0.38) washes green out. */
+const disabledSx = {
+  opacity: 1,
+  color: colors.greenMuted,
+  borderColor: colors.greenMuted,
+  WebkitTextFillColor: colors.greenMuted,
+};
+
 const CtaButton = ({
   to,
   href,
@@ -18,6 +26,8 @@ const CtaButton = ({
   sx = {},
   ...rest
 }) => {
+  const { '&.Mui-disabled': disabledOverride, ...restSx } = sx;
+
   const sharedProps = {
     className: 'altFont',
     variant: variant ?? (secondary ? 'text' : 'outlined'),
@@ -35,7 +45,12 @@ const CtaButton = ({
             },
           }
         : {}),
-      ...sx,
+      ...restSx,
+      '&.Mui-disabled': {
+        ...disabledSx,
+        ...(secondary ? { borderColor: 'transparent' } : {}),
+        ...disabledOverride,
+      },
     },
     ...rest,
   };

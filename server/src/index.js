@@ -2,12 +2,14 @@ const { createApp } = require('./app');
 const { config, assertProductionConfig } = require('./config');
 const { getDb, runMigrations, closeDb } = require('./db');
 const { ensureUploadDir } = require('./utils/uploads');
+const { startActivationTickInterval } = require('./billing/activationTick');
 
 assertProductionConfig();
 ensureUploadDir();
 runMigrations(getDb());
 
 const app = createApp();
+startActivationTickInterval();
 
 const server = app.listen(config.port, config.host, () => {
   console.log(`loganb-api listening on http://${config.host}:${config.port}`);

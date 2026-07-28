@@ -1,9 +1,15 @@
 import React from 'react';
 import Box from '@mui/material/Box';
+import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { fieldSx } from '../forms/formStyles';
+import {
+  paymentScheduleOptions,
+  revisionLimitOptions,
+} from '../../data/paymentSchedules';
+import { hostingPlanOptions } from '../../data/hostingPlans';
 import { colors } from '../../theme/colors';
 
 /** Convert dollar input string to integer cents, or null if empty/invalid. */
@@ -34,7 +40,7 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         minRows={2}
         disabled={disabled}
         error={Boolean(fieldErrors.summary)}
-        helperText={fieldErrors.summary}
+        helperText={fieldErrors.summary || 'Short pitch: outcome and who it’s for.'}
         sx={fieldSx}
       />
       <TextField
@@ -46,7 +52,7 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         minRows={4}
         disabled={disabled}
         error={Boolean(fieldErrors.scope)}
-        helperText={fieldErrors.scope}
+        helperText={fieldErrors.scope || 'What work you’re doing (the engagement).'}
         sx={fieldSx}
       />
       <TextField
@@ -58,7 +64,10 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         minRows={3}
         disabled={disabled}
         error={Boolean(fieldErrors.deliverables)}
-        helperText={fieldErrors.deliverables || 'One item per line is fine.'}
+        helperText={
+          fieldErrors.deliverables ||
+          'Concrete outputs the client receives (one item per line).'
+        }
         sx={fieldSx}
       />
       <TextField
@@ -70,7 +79,10 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         minRows={2}
         disabled={disabled}
         error={Boolean(fieldErrors.exclusions)}
-        helperText={fieldErrors.exclusions}
+        helperText={
+          fieldErrors.exclusions ||
+          'Explicitly not included—even if someone might assume it is.'
+        }
         sx={fieldSx}
       />
       <TextField
@@ -80,32 +92,63 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         fullWidth
         disabled={disabled}
         error={Boolean(fieldErrors.timelineSummary)}
-        helperText={fieldErrors.timelineSummary}
+        helperText={
+          fieldErrors.timelineSummary ||
+          'Delivery duration after kickoff (e.g. 3–4 weeks after content).'
+        }
         sx={fieldSx}
       />
       <TextField
+        label="Target Kickoff Date"
+        type="date"
+        value={values.kickoffDate || ''}
+        onChange={update('kickoffDate')}
+        fullWidth
+        disabled={disabled}
+        InputLabelProps={{ shrink: true }}
+        error={Boolean(fieldErrors.kickoffDate)}
+        helperText={
+          fieldErrors.kickoffDate ||
+          'Earliest you’ll start; deposit can be paid earlier. Leave blank if flexible.'
+        }
+        sx={fieldSx}
+      />
+      <TextField
+        select
         label="Revision Limit"
-        value={values.revisionLimit}
+        value={values.revisionLimit === null || values.revisionLimit === undefined
+          ? ''
+          : String(values.revisionLimit)}
         onChange={update('revisionLimit')}
         fullWidth
         disabled={disabled}
-        placeholder="e.g. 2 rounds of revisions"
         error={Boolean(fieldErrors.revisionLimit)}
-        helperText={fieldErrors.revisionLimit}
+        helperText={fieldErrors.revisionLimit || 'Included design/dev revision rounds.'}
         sx={fieldSx}
-      />
+      >
+        {revisionLimitOptions.map((opt) => (
+          <MenuItem key={opt.label} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </TextField>
       <TextField
+        select
         label="Payment Terms"
-        value={values.paymentTerms}
-        onChange={update('paymentTerms')}
+        value={values.paymentSchedule || ''}
+        onChange={update('paymentSchedule')}
         fullWidth
-        multiline
-        minRows={2}
         disabled={disabled}
-        error={Boolean(fieldErrors.paymentTerms)}
-        helperText={fieldErrors.paymentTerms}
+        error={Boolean(fieldErrors.paymentSchedule)}
+        helperText={fieldErrors.paymentSchedule || 'Drives portal payment buttons.'}
         sx={fieldSx}
-      />
+      >
+        {paymentScheduleOptions.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </TextField>
       <Box
         sx={{
           display: 'grid',
@@ -126,19 +169,25 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
           sx={fieldSx}
         />
         <TextField
-          label="Hosting Monthly (USD)"
-          value={values.hostingMonthlyDollars}
-          onChange={update('hostingMonthlyDollars')}
+          select
+          label="Hosting Plan"
+          value={values.hostingPlan || 'none'}
+          onChange={update('hostingPlan')}
           fullWidth
           disabled={disabled}
-          inputProps={{ inputMode: 'decimal' }}
-          error={Boolean(fieldErrors.hostingMonthlyCents)}
-          helperText={fieldErrors.hostingMonthlyCents || 'Optional'}
+          error={Boolean(fieldErrors.hostingPlan)}
+          helperText={fieldErrors.hostingPlan || 'Stripe subscription catalog'}
           sx={fieldSx}
-        />
+        >
+          {hostingPlanOptions.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
       </Box>
       <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-        Amounts are stored in cents on the server. Currency is USD.
+        Design price is stored in cents. Hosting uses a fixed Stripe Price ID per plan.
       </Typography>
     </Stack>
   );

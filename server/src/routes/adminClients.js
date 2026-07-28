@@ -1,5 +1,5 @@
 const express = require('express');
-const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS } = require('../constants');
+const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS, PROJECT_STATUS_LABELS } = require('../constants');
 const { listAdminClients, getAdminClientById } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { setNoStore } = require('../auth/cookies');
@@ -71,6 +71,18 @@ function mapClientProposal(row) {
   };
 }
 
+function mapClientProject(row) {
+  return {
+    id: row.id,
+    name: row.name || null,
+    status: row.status,
+    statusLabel: PROJECT_STATUS_LABELS[row.status] || row.status,
+    proposalId: row.proposal_id || null,
+    inquiryId: row.inquiry_id || null,
+    createdAt: toIsoUtc(row.created_at),
+  };
+}
+
 router.use(requireAdmin);
 router.use((_req, res, next) => {
   setNoStore(res);
@@ -121,7 +133,7 @@ router.get('/:id', (req, res, next) => {
         updatedAt: toIsoUtc(client.updated_at),
         inquiries: (client.inquiries || []).map(mapClientInquiry),
         proposals: (client.proposals || []).map(mapClientProposal),
-        projects: [],
+        projects: (client.projects || []).map(mapClientProject),
         invoices: [],
       },
     });

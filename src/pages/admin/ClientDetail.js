@@ -2,13 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Section from '../../components/Section';
+import LinkedRecordCard from '../../components/admin/LinkedRecordCard';
+import AdminInvoicesSection from '../../components/admin/AdminInvoicesSection';
 import { fetchClient } from '../../api/adminClient';
 import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import {
+  inquiryTypeChipSx,
+  pipelineStageChipSx,
+  projectStatusChipSx,
+  proposalStatusChipSx,
+} from '../../data/statusChips';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
@@ -50,14 +57,6 @@ function DetailSection({ title, children }) {
       <Divider sx={{ borderColor: 'rgba(149, 99, 187, 0.35)', mb: 2 }} />
       {children}
     </Box>
-  );
-}
-
-function PlaceholderSection({ title, message }) {
-  return (
-    <DetailSection title={title}>
-      <Typography sx={{ color: colors.muted }}>{message}</Typography>
-    </DetailSection>
   );
 }
 
@@ -119,59 +118,26 @@ const ClientDetail = () => {
               ) : (
                 <Stack spacing={1.5}>
                   {client.inquiries.map((inquiry) => (
-                    <Box
+                    <LinkedRecordCard
                       key={inquiry.id}
-                      sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 1.5,
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: `1px solid rgba(149, 99, 187, 0.35)`,
-                        backgroundColor: colors.cardBg,
-                      }}
-                    >
-                      <Box>
-                        <Stack direction="row" spacing={1} sx={{ mb: 0.75, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={inquiryTypeChipLabel(
-                              inquiry.type,
-                              inquiry.packageLabel,
-                              inquiry.packageSlug
-                            )}
-                            size="small"
-                            sx={{
-                              color: colors.purple,
-                              border: `1px solid ${colors.purple}`,
-                              backgroundColor: 'rgba(149, 99, 187, 0.12)',
-                              fontWeight: 600,
-                            }}
-                          />
-                          <Chip
-                            label={resolveStageLabel(inquiry.stage, inquiry.stageLabel)}
-                            size="small"
-                            sx={{
-                              color: colors.green,
-                              border: `1px solid ${colors.green}`,
-                              backgroundColor: colors.greenSoft,
-                              fontWeight: 600,
-                            }}
-                          />
-                        </Stack>
-                        <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-                          {formatSubmitted(inquiry.createdAt)}
-                        </Typography>
-                      </Box>
-                      <Button
-                        component={RouterLink}
-                        to={`/admin/inquiries/${inquiry.id}`}
-                        sx={{ color: colors.green, textTransform: 'none' }}
-                      >
-                        View Inquiry
-                      </Button>
-                    </Box>
+                      chips={[
+                        {
+                          label: inquiryTypeChipLabel(
+                            inquiry.type,
+                            inquiry.packageLabel,
+                            inquiry.packageSlug
+                          ),
+                          sx: inquiryTypeChipSx(inquiry.type),
+                        },
+                        {
+                          label: resolveStageLabel(inquiry.stage, inquiry.stageLabel),
+                          sx: pipelineStageChipSx(inquiry.stage),
+                        },
+                      ]}
+                      dateLabel={formatSubmitted(inquiry.createdAt)}
+                      viewTo={`/admin/inquiries/${inquiry.id}`}
+                      viewLabel="View Inquiry"
+                    />
                   ))}
                 </Stack>
               )}
@@ -183,67 +149,51 @@ const ClientDetail = () => {
               ) : (
                 <Stack spacing={1.5}>
                   {client.proposals.map((proposal) => (
-                    <Box
+                    <LinkedRecordCard
                       key={proposal.id}
-                      sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 1.5,
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: `1px solid rgba(149, 99, 187, 0.35)`,
-                        backgroundColor: colors.cardBg,
-                      }}
-                    >
-                      <Box>
-                        <Stack direction="row" spacing={1} sx={{ mb: 0.75, flexWrap: 'wrap' }}>
-                          <Chip
-                            label={proposal.statusLabel}
-                            size="small"
-                            sx={{
-                              color:
-                                proposal.status === 'sent' ? colors.green : colors.purple,
-                              border: `1px solid ${
-                                proposal.status === 'sent' ? colors.green : colors.purple
-                              }`,
-                              backgroundColor:
-                                proposal.status === 'sent'
-                                  ? colors.greenSoft
-                                  : 'rgba(149, 99, 187, 0.12)',
-                              fontWeight: 600,
-                            }}
-                          />
-                        </Stack>
-                        <Typography sx={{ color: colors.text, fontSize: 14 }}>
-                          {proposal.designAmountLabel || '—'}
-                        </Typography>
-                        <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-                          {formatSubmitted(proposal.sentAt || proposal.createdAt)}
-                        </Typography>
-                      </Box>
-                      <Button
-                        component={RouterLink}
-                        to={`/admin/proposals/${proposal.id}`}
-                        sx={{ color: colors.green, textTransform: 'none' }}
-                      >
-                        View Proposal
-                      </Button>
-                    </Box>
+                      chips={[
+                        {
+                          label: proposal.statusLabel,
+                          sx: proposalStatusChipSx(proposal.status),
+                        },
+                      ]}
+                      dateLabel={formatSubmitted(proposal.sentAt || proposal.createdAt)}
+                      viewTo={`/admin/proposals/${proposal.id}`}
+                      viewLabel="View Proposal"
+                    />
                   ))}
                 </Stack>
               )}
             </DetailSection>
 
-            <PlaceholderSection
-              title="Projects"
-              message="Accepted proposals will create projects shown here later."
-            />
-            <PlaceholderSection
-              title="Invoices"
-              message="Billing records for this client will appear here later."
-            />
+            <DetailSection title="Projects">
+              {(client.projects || []).length === 0 ? (
+                <Typography sx={{ color: colors.muted }}>
+                  Accepted proposals will create projects shown here.
+                </Typography>
+              ) : (
+                <Stack spacing={1.5}>
+                  {client.projects.map((project) => (
+                    <LinkedRecordCard
+                      key={project.id}
+                      chips={[
+                        {
+                          label: project.statusLabel || project.status,
+                          sx: projectStatusChipSx(project.status),
+                        },
+                      ]}
+                      dateLabel={`Created ${formatSubmitted(project.createdAt)}`}
+                      viewTo={`/admin/projects/${project.id}`}
+                      viewLabel="View Project"
+                    />
+                  ))}
+                </Stack>
+              )}
+            </DetailSection>
+
+            <DetailSection title="Invoices">
+              <AdminInvoicesSection variant="client" clientId={client.id} pageSize={10} />
+            </DetailSection>
           </>
         ) : null}
       </Section>

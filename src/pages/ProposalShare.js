@@ -26,6 +26,11 @@ import {
   resolveContentReadinessLabel,
   resolveTimelineLabel,
 } from '../data/intakeOptions';
+import { resolvePackageLabel } from '../data/adminNav';
+import {
+  formatRevisionLimit,
+  resolvePaymentScheduleLabel,
+} from '../data/paymentSchedules';
 import { useToast } from '../toast/ToastProvider';
 import { colors } from '../theme/colors';
 
@@ -37,6 +42,17 @@ function formatDate(iso) {
     }).format(new Date(iso));
   } catch {
     return iso;
+  }
+}
+
+function formatKickoffDate(ymd) {
+  if (!ymd) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+      new Date(`${ymd}T00:00:00`)
+    );
+  } catch {
+    return ymd;
   }
 }
 
@@ -59,6 +75,37 @@ function Field({ label, value }) {
       <Typography sx={{ color: colors.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {value}
       </Typography>
+    </Box>
+  );
+}
+
+function PackageChipField({ packageLabel, packageSlug }) {
+  const label = resolvePackageLabel(packageSlug, packageLabel);
+  if (!label) return null;
+  return (
+    <Box sx={{ mb: 2.5 }}>
+      <Typography
+        sx={{
+          color: colors.muted,
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          mb: 0.75,
+        }}
+      >
+        Package
+      </Typography>
+      <Chip
+        label={label}
+        size="small"
+        sx={{
+          color: colors.purple,
+          border: `1px solid ${colors.purple}`,
+          backgroundColor: 'rgba(149, 99, 187, 0.12)',
+          fontWeight: 600,
+        }}
+      />
     </Box>
   );
 }
@@ -250,7 +297,10 @@ const ProposalShare = () => {
               <Field label="Business" value={inquiry?.businessName || client?.businessName} />
               <Field label="Email" value={inquiry?.email || client?.email} />
               <Field label="Phone" value={inquiry?.phone} />
-              <Field label="Package" value={inquiry?.packageLabel} />
+              <PackageChipField
+                packageLabel={inquiry?.packageLabel}
+                packageSlug={inquiry?.packageSlug}
+              />
               <Field label="Message" value={inquiry?.message} />
               <Field label="Website Goals" value={inquiry?.websiteGoals} />
               <Field label="Current Website" value={inquiry?.currentWebsite} />
@@ -273,8 +323,28 @@ const ProposalShare = () => {
               <Field label="Deliverables" value={proposal?.deliverables} />
               <Field label="Exclusions" value={proposal?.exclusions} />
               <Field label="Timeline" value={proposal?.timelineSummary} />
-              <Field label="Revision Limit" value={proposal?.revisionLimit} />
-              <Field label="Payment Terms" value={proposal?.paymentTerms} />
+              <Field
+                label="Target Kickoff Date"
+                value={formatKickoffDate(proposal?.kickoffDate)}
+              />
+              <Field
+                label="Revision Limit"
+                value={
+                  proposal
+                    ? proposal.revisionLimitLabel || formatRevisionLimit(proposal.revisionLimit)
+                    : null
+                }
+              />
+              <Field
+                label="Payment Terms"
+                value={
+                  proposal
+                    ? proposal.paymentTermsLabel ||
+                      resolvePaymentScheduleLabel(proposal.paymentSchedule) ||
+                      proposal.paymentTerms
+                    : null
+                }
+              />
               <Field label="Design Price" value={proposal?.designAmountLabel} />
               <Field label="Hosting Monthly" value={proposal?.hostingMonthlyLabel} />
             </Block>
@@ -327,7 +397,9 @@ const ProposalShare = () => {
                         backgroundColor: 'rgba(229, 115, 115, 0.12)',
                       },
                       '&.Mui-disabled': {
-                        color: 'rgba(229, 115, 115, 0.4)',
+                        color: '#c47a7a',
+                        WebkitTextFillColor: '#c47a7a',
+                        borderColor: 'transparent',
                       },
                     }}
                   >
@@ -343,7 +415,18 @@ const ProposalShare = () => {
       <Dialog open={modal === 'accept'} onClose={closeModal} fullWidth maxWidth="xs" PaperProps={{ sx: dialogPaperSx }}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
           Accept Proposal
-          <IconButton aria-label="Close" onClick={closeModal} disabled={submitting} sx={{ color: colors.muted }}>
+          <IconButton
+            aria-label="Close"
+            onClick={closeModal}
+            disabled={submitting}
+            sx={{
+              color: colors.muted,
+              '&.Mui-disabled': {
+                opacity: 1,
+                color: colors.muted,
+              },
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -366,7 +449,18 @@ const ProposalShare = () => {
       <Dialog open={modal === 'revise'} onClose={closeModal} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
           Request Revision
-          <IconButton aria-label="Close" onClick={closeModal} disabled={submitting} sx={{ color: colors.muted }}>
+          <IconButton
+            aria-label="Close"
+            onClick={closeModal}
+            disabled={submitting}
+            sx={{
+              color: colors.muted,
+              '&.Mui-disabled': {
+                opacity: 1,
+                color: colors.muted,
+              },
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -402,7 +496,18 @@ const ProposalShare = () => {
       <Dialog open={modal === 'decline'} onClose={closeModal} fullWidth maxWidth="sm" PaperProps={{ sx: dialogPaperSx }}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
           Decline Proposal
-          <IconButton aria-label="Close" onClick={closeModal} disabled={submitting} sx={{ color: colors.muted }}>
+          <IconButton
+            aria-label="Close"
+            onClick={closeModal}
+            disabled={submitting}
+            sx={{
+              color: colors.muted,
+              '&.Mui-disabled': {
+                opacity: 1,
+                color: colors.muted,
+              },
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>

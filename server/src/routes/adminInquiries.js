@@ -2,12 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { config } = require('../config');
-const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS } = require('../constants');
+const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS, PROJECT_STATUS_LABELS } = require('../constants');
 const {
   listAdminInquiries,
   getAdminInquiryById,
   getAdminAttachment,
   listProposalsByInquiryId,
+  getProjectForInquiry,
   markInquiryContacted,
   getInquiryWithAttachments,
 } = require('../db');
@@ -68,6 +69,17 @@ function mapInquiryDetail(row) {
     createdAt: toIsoUtc(p.created_at),
   }));
 
+  const projectRow = getProjectForInquiry(row.id);
+  const project = projectRow
+    ? {
+        id: projectRow.id,
+        status: projectRow.status,
+        statusLabel: PROJECT_STATUS_LABELS[projectRow.status] || projectRow.status,
+        name: projectRow.name || null,
+        createdAt: toIsoUtc(projectRow.created_at),
+      }
+    : null;
+
   return {
     id: row.id,
     type: row.type,
@@ -83,6 +95,7 @@ function mapInquiryDetail(row) {
     requestedFeatures: row.requested_features,
     inspirationLinks: row.inspiration_links,
     domainInfo: row.domain_info,
+    domainName: row.domain_name || null,
     brandingNotes: row.branding_notes,
     contentReadiness: row.content_readiness,
     timeline: row.timeline,
@@ -94,6 +107,7 @@ function mapInquiryDetail(row) {
     createdAt: toIsoUtc(row.created_at),
     clientId: row.client_id || null,
     proposals,
+    project,
     attachments: (row.attachments || []).map(mapAttachmentMeta),
   };
 }

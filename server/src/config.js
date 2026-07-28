@@ -34,7 +34,19 @@ const config = {
     /\/$/,
     ''
   ),
+  emailLogoUrl: (process.env.EMAIL_LOGO_URL || '').trim(),
   proposalShareTtlDays: Number(process.env.PROPOSAL_SHARE_TTL_DAYS || 14),
+  clientSessionSecret: process.env.CLIENT_SESSION_SECRET || '',
+  clientSessionTtlSeconds: Number(process.env.CLIENT_SESSION_TTL_SECONDS || 7 * 24 * 60 * 60),
+  clientSessionCookieName: process.env.CLIENT_SESSION_COOKIE_NAME || 'lb_client_session',
+  clientPortalSetupTtlDays: Number(process.env.CLIENT_PORTAL_SETUP_TTL_DAYS || 7),
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+  stripeHostingPriceIds: {
+    hosting_39: process.env.STRIPE_HOSTING_PRICE_ID_39 || 'price_temp_hosting_39',
+    hosting_25: process.env.STRIPE_HOSTING_PRICE_ID_25 || 'price_temp_hosting_25',
+    hosting_10: process.env.STRIPE_HOSTING_PRICE_ID_10 || 'price_temp_hosting_10',
+  },
 };
 
 function assertProductionConfig() {
@@ -47,14 +59,32 @@ function assertProductionConfig() {
   required('ADMIN_EMAIL');
   required('ADMIN_PASSWORD_HASH');
   required('ADMIN_SESSION_SECRET');
+  required('CLIENT_SESSION_SECRET');
   required('ALLOWED_ORIGIN');
   required('PUBLIC_APP_URL');
 
   if (config.adminSessionSecret.length < 32) {
     throw new Error('ADMIN_SESSION_SECRET must be at least 32 characters in production.');
   }
+  if (config.clientSessionSecret.length < 32) {
+    throw new Error('CLIENT_SESSION_SECRET must be at least 32 characters in production.');
+  }
   if (!config.adminPasswordHash.startsWith('scrypt$')) {
     throw new Error('ADMIN_PASSWORD_HASH must be a versioned scrypt hash from npm run hash-password.');
+  }
+
+  // If Stripe is enabled in production, require webhook secret and real Price IDs.
+  if (config.stripeSecretKey) {
+    if (!config.stripeWebhookSecret || config.stripeWebhookSecret.startsWith('whsec_replace')) {
+      throw new Error('STRIPE_WEBHOOK_SECRET is required when STRIPE_SECRET_KEY is set in production.');
+    }
+    for (const [plan, priceId] of Object.entries(config.stripeHostingPriceIds)) {
+      if (!priceId || String(priceId).startsWith('price_temp_')) {
+        throw new Error(
+          `STRIPE_HOSTING_PRICE_ID for ${plan} must be a real Stripe Price ID in production (got ${priceId}).`
+        );
+      }
+    }
   }
 }
 

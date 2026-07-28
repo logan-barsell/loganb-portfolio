@@ -3,6 +3,9 @@ const {
   PACKAGE_LABELS,
   CLIENT_PROPOSAL_STATUS_LABELS,
   PROPOSAL_STATUS_LABELS,
+  DEFAULT_PAYMENT_SCHEDULE,
+  paymentScheduleLabel,
+  formatRevisionLimitLabel,
   LIMITS,
 } = require('../constants');
 const {
@@ -95,8 +98,14 @@ function mapSharePayload(proposal, share, revisions = []) {
       deliverables: proposal.deliverables || null,
       exclusions: proposal.exclusions || null,
       timelineSummary: proposal.timeline_summary || null,
-      paymentTerms: proposal.payment_terms || null,
-      revisionLimit: proposal.revision_limit || null,
+      paymentSchedule: proposal.payment_schedule || DEFAULT_PAYMENT_SCHEDULE,
+      paymentTermsLabel: paymentScheduleLabel(
+        proposal.payment_schedule || DEFAULT_PAYMENT_SCHEDULE
+      ),
+      paymentTerms: paymentScheduleLabel(proposal.payment_schedule || DEFAULT_PAYMENT_SCHEDULE),
+      kickoffDate: proposal.kickoff_date || null,
+      revisionLimit: proposal.revision_limit ?? null,
+      revisionLimitLabel: formatRevisionLimitLabel(proposal.revision_limit),
       designAmountCents: proposal.design_amount_cents,
       designAmountLabel: formatMoney(proposal.design_amount_cents, proposal.currency),
       hostingMonthlyCents: proposal.hosting_monthly_cents,
@@ -169,7 +178,10 @@ router.post(
       let emailSent = true;
       if (!result.already) {
         emailSent = await sendDecisionEmailsSafe(() =>
-          sendProposalAcceptedEmails(result.proposal)
+          sendProposalAcceptedEmails(result.proposal, {
+            portalSetup: result.portalSetup || null,
+            projectId: result.project?.id || null,
+          })
         );
       }
 

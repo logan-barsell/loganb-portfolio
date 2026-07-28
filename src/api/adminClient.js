@@ -1,12 +1,9 @@
-async function parseJsonSafe(response) {
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { message: text };
-  }
-}
+import {
+  createHttpError,
+  fetchSafe,
+  parseJsonSafe,
+  GENERIC_SERVER_ERROR,
+} from './http';
 
 let unauthorizedHandler = null;
 
@@ -26,7 +23,7 @@ function buildQuery(params = {}) {
 
 async function adminRequest(url, options = {}) {
   const { headers: optionHeaders, ...rest } = options;
-  const response = await fetch(url, {
+  const response = await fetchSafe(url, {
     credentials: 'same-origin',
     ...rest,
     headers: {
@@ -44,11 +41,7 @@ async function adminRequest(url, options = {}) {
 
   const data = await parseJsonSafe(response);
   if (!response.ok || data.ok === false) {
-    const error = new Error(data.message || 'Request failed.');
-    error.status = response.status;
-    error.code = data.code;
-    error.details = data.details;
-    throw error;
+    throw createHttpError(response, data, 'Request failed.');
   }
   return data;
 }
@@ -124,29 +117,18 @@ export async function sendProposal(id, body) {
 }
 
 export async function fetchProposalShare(token) {
-  const response = await fetch(`/api/proposals/share/${encodeURIComponent(token)}`, {
+  const response = await fetchSafe(`/api/proposals/share/${encodeURIComponent(token)}`, {
     headers: { Accept: 'application/json' },
   });
-  const text = await response.text();
-  let data = {};
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
-  }
+  const data = await parseJsonSafe(response);
   if (!response.ok || data.ok === false) {
-    const error = new Error(data.message || 'Unable to load proposal.');
-    error.status = response.status;
-    error.code = data.code;
-    throw error;
+    throw createHttpError(response, data, 'Unable to load proposal.');
   }
   return data;
 }
 
 async function proposalShareAction(token, path, body) {
-  const response = await fetch(`/api/proposals/share/${encodeURIComponent(token)}${path}`, {
+  const response = await fetchSafe(`/api/proposals/share/${encodeURIComponent(token)}${path}`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -154,21 +136,9 @@ async function proposalShareAction(token, path, body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const text = await response.text();
-  let data = {};
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
-  }
+  const data = await parseJsonSafe(response);
   if (!response.ok || data.ok === false) {
-    const error = new Error(data.message || 'Unable to update proposal.');
-    error.status = response.status;
-    error.code = data.code;
-    error.details = data.details;
-    throw error;
+    throw createHttpError(response, data, 'Unable to update proposal.');
   }
   return data;
 }
@@ -193,6 +163,41 @@ export async function fetchProject(id) {
   return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}`);
 }
 
+export async function updateProject(id, body) {
+  return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function markProjectStarted(id) {
+  return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}/mark-started`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function setProjectReadyForLaunch(id, ready) {
+  return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}/ready-for-launch`, {
+    method: 'POST',
+    body: JSON.stringify({ ready: Boolean(ready) }),
+  });
+}
+
+export async function fetchInvoices(params) {
+  return adminRequest(`/api/admin/invoices${buildQuery(params)}`);
+}
+
+export async function resendPortalAccess(projectId) {
+  return adminRequest(
+    `/api/admin/projects/${encodeURIComponent(projectId)}/resend-portal-access`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }
+  );
+}
+
 export function attachmentDownloadUrl(inquiryId, attachmentId) {
   return `/api/admin/inquiries/${encodeURIComponent(inquiryId)}/attachments/${encodeURIComponent(
     attachmentId
@@ -204,7 +209,7 @@ export function attachmentPreviewUrl(inquiryId, attachmentId) {
 }
 
 export async function fetchAttachmentPreview(inquiryId, attachmentId) {
-  const response = await fetch(attachmentPreviewUrl(inquiryId, attachmentId), {
+  const response = await fetchSafe(attachmentPreviewUrl(inquiryId, attachmentId), {
     credentials: 'same-origin',
     headers: { Accept: '*/*' },
   });
@@ -215,13 +220,10 @@ export async function fetchAttachmentPreview(inquiryId, attachmentId) {
 
   if (!response.ok) {
     const data = await parseJsonSafe(response);
-    const error = new Error(data.message || 'Unable to preview attachment.');
-    error.status = response.status;
-    error.code = data.code;
-    throw error;
+    throw createHttpError(response, data, 'Unable to preview attachment.');
   }
 
   return response.blob();
 }
 
-export { buildQuery };
+export { buildQuery, GENERIC_SERVER_ERROR };

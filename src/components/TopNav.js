@@ -21,6 +21,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import FingerprintIcon from '@mui/icons-material/Fingerprint';
 import { primaryNav } from '../data/nav';
 import { colors } from '../theme/colors';
+import { usePortalNav } from '../auth/PortalNavProvider';
 import CtaButton from './CtaButton';
 
 function HideOnScroll({ children }) {
@@ -37,10 +38,41 @@ const drawerWidth = 260;
 const TopNav = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
+  const { isAuthenticated: portalAuthenticated, logout: portalLogout, loggingOut } =
+    usePortalNav();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  const handlePortalLogout = async (event) => {
+    event?.stopPropagation?.();
+    if (!portalLogout || loggingOut) return;
+    try {
+      await portalLogout();
+      setMobileOpen(false);
+    } catch {
+      // Overview already toasts on failure.
+    }
+  };
+
+  const navCta = portalAuthenticated ? (
+    <CtaButton onClick={handlePortalLogout} disabled={loggingOut} fullWidth={false}>
+      {loggingOut ? 'Signing Out…' : 'Log Out'}
+    </CtaButton>
+  ) : (
+    <CtaButton to="/start">Start a Project</CtaButton>
+  );
+
+  const mobileNavCta = portalAuthenticated ? (
+    <CtaButton onClick={handlePortalLogout} disabled={loggingOut} fullWidth>
+      {loggingOut ? 'Signing Out…' : 'Log Out'}
+    </CtaButton>
+  ) : (
+    <CtaButton to="/start" fullWidth>
+      Start a Project
+    </CtaButton>
+  );
 
   const drawer = (
     <Box onClickCapture={handleDrawerToggle} sx={{ textAlign: 'center' }}>
@@ -70,10 +102,13 @@ const TopNav = () => {
             </ListItemButton>
           </ListItem>
         ))}
-        <Box sx={{ mt: 4, px: 2 }}>
-          <CtaButton to="/start" fullWidth>
-            Start a Project
-          </CtaButton>
+        <Box
+          sx={{ mt: 4, px: 2 }}
+          onClickCapture={(event) => {
+            if (portalAuthenticated) event.stopPropagation();
+          }}
+        >
+          {mobileNavCta}
         </Box>
       </List>
     </Box>
@@ -118,9 +153,7 @@ const TopNav = () => {
                   <div className="hvr-left">{item.label}</div>
                 </Button>
               ))}
-              <CtaButton to="/start" sx={{ marginLeft: '10px' }}>
-                Start a Project
-              </CtaButton>
+              <Box sx={{ marginLeft: '10px' }}>{navCta}</Box>
             </Box>
             <IconButton
               className="menuIcon"
