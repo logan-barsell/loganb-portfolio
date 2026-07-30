@@ -1,7 +1,7 @@
 const {
   LIMITS,
   PACKAGE_SLUGS,
-} = require('../constants');
+} = require('../config/constants');
 const {
   trimToNull,
   normalizeEmail,

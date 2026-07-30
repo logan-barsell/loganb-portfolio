@@ -1,10 +1,10 @@
 const { config } = require('../config');
-const { getValidSession, destroySession } = require('../auth/sessions');
+const { getValidSession, destroySession } = require('../services/auth/sessions');
 const {
   getSessionToken,
   clearSessionCookie,
   setNoStore,
-} = require('../auth/cookies');
+} = require('../services/auth/cookies');
 
 function requireAdmin(req, res, next) {
   setNoStore(res);

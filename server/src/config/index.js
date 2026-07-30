@@ -1,7 +1,7 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '../..', '.env') });
 
 function required(name, fallback) {
   const value = process.env[name] ?? fallback;
@@ -11,7 +11,7 @@ function required(name, fallback) {
   return value;
 }
 
-const rootDir = path.join(__dirname, '..');
+const rootDir = path.join(__dirname, '../..');
 const env = process.env.NODE_ENV || 'development';
 
 const config = {

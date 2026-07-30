@@ -4,9 +4,9 @@ const {
   DEFAULT_PAYMENT_SCHEDULE,
   resolveHostingPlan,
   INVOICE_KIND_LABELS,
-} = require('../constants');
-const { config } = require('../config');
-const { getDb } = require('../db');
+} = require('../../config/constants');
+const { config } = require('../../config');
+const { getDb } = require('../../db');
 
 function toIsoSqliteNow() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
@@ -221,7 +221,7 @@ function setProjectSubscription(projectId, subscriptionId, database = getDb()) {
  * Admin mark-started bypasses via started_by=admin elsewhere.
  */
 function maybeActivateProject(projectId, database = getDb()) {
-  const { syncInquiryPipeline } = require('../db');
+  const { syncInquiryPipeline } = require('../../db');
   const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
   if (!project || project.status !== 'on_hold') return project;
 
@@ -259,7 +259,7 @@ function maybeActivateProject(projectId, database = getDb()) {
 }
 
 function markProjectStartedByAdmin(projectId, database = getDb()) {
-  const { syncInquiryPipeline } = require('../db');
+  const { syncInquiryPipeline } = require('../../db');
   const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
   if (!project) return null;
 

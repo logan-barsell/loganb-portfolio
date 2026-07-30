@@ -2,66 +2,30 @@ const express = require('express');
 const {
   PACKAGE_LABELS,
   PROPOSAL_STATUS_LABELS,
-  PROPOSAL_STATUSES,
   INQUIRY_STAGE_LABELS,
-  PAYMENT_SCHEDULES,
   DEFAULT_PAYMENT_SCHEDULE,
   paymentScheduleLabel,
   formatRevisionLimitLabel,
-  HOSTING_PLANS,
-  DEFAULT_HOSTING_PLAN,
   resolveHostingPlan,
   hostingPlanFromCents,
-  LIMITS,
-} = require('../constants');
+} = require('../config/constants');
 const {
   listAdminProposals,
   getProposalById,
   createProposal,
   updateProposal,
-  markProposalSent,
   getAdminInquiryById,
   listProposalsByInquiryId,
-  createProposalShare,
-  prepareProposalShareToken,
   listRevisionRequestsForProposal,
   listAttachmentsForInquiry,
 } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore } = require('../auth/cookies');
-const {
-  trimToNull,
-  enforceMaxLength,
-  createHttpError,
-  normalizeEmail,
-  isValidEmail,
-} = require('../utils/normalize');
-const { config } = require('../config');
-const { sendProposalShareEmail } = require('../email');
+const { setNoStore } = require('../services/auth/cookies');
+const { trimToNull, createHttpError } = require('../utils/normalize');
+const { parseProposalBody, sendProposalShare } = require('../services/proposals');
+const { toIsoUtc, formatMoney, mapAttachmentMeta } = require('../lib/format');
 
 const router = express.Router();
-
-function toIsoUtc(sqliteDatetime) {
-  if (!sqliteDatetime) return null;
-  const normalized = /Z$|[+-]\d{2}:?\d{2}$/.test(sqliteDatetime)
-    ? sqliteDatetime
-    : `${String(sqliteDatetime).replace(' ', 'T')}Z`;
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
-}
-
-function formatMoney(cents, currency = 'usd') {
-  if (cents === null || cents === undefined) return null;
-  const amount = Number(cents) / 100;
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: String(currency || 'usd').toUpperCase(),
-    }).format(amount);
-  } catch {
-    return `$${(Number(cents) / 100).toFixed(2)}`;
-  }
-}
 
 function mapProposalListRow(row) {
   return {
@@ -94,16 +58,6 @@ function mapProposalListRow(row) {
     packageLabel: row.inquiry_package_slug
       ? PACKAGE_LABELS[row.inquiry_package_slug] || row.inquiry_package_slug
       : null,
-  };
-}
-
-function mapAttachmentMeta(row) {
-  return {
-    id: row.id,
-    originalName: row.original_name,
-    mimeType: row.mime_type,
-    sizeBytes: row.size_bytes,
-    createdAt: toIsoUtc(row.created_at),
   };
 }
 
@@ -179,140 +133,6 @@ function mapProposalDetail(row) {
         }
       : null,
   };
-}
-
-function parseKickoffDate(value) {
-  const raw = trimToNull(value);
-  if (!raw) return { value: null };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return { error: 'Kickoff date must be YYYY-MM-DD.' };
-  }
-  const ms = Date.parse(`${raw}T00:00:00Z`);
-  if (!Number.isFinite(ms)) {
-    return { error: 'Kickoff date must be a valid calendar date.' };
-  }
-  return { value: raw };
-}
-
-function parseRevisionLimit(value, { partial = false } = {}) {
-  if (value === undefined) {
-    return partial ? { omitted: true } : { value: 2 };
-  }
-  if (value === null || value === '') {
-    return { value: null };
-  }
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 1 || n > 99) {
-    return { error: 'Revision limit must be a positive whole number, or empty for unlimited.' };
-  }
-  return { value: n };
-}
-
-function parseProposalBody(body, { partial = false } = {}) {
-  const errors = {};
-
-  const summary = enforceMaxLength(trimToNull(body.summary), LIMITS.proposalSummary);
-  const scope = enforceMaxLength(trimToNull(body.scope), LIMITS.proposalScope);
-  const deliverables = enforceMaxLength(trimToNull(body.deliverables), LIMITS.proposalDeliverables);
-  const exclusions = enforceMaxLength(trimToNull(body.exclusions), LIMITS.proposalExclusions);
-  const timelineSummary = enforceMaxLength(
-    trimToNull(body.timelineSummary),
-    LIMITS.proposalTimeline
-  );
-
-  let paymentSchedule;
-  if (body.paymentSchedule !== undefined && body.paymentSchedule !== null && body.paymentSchedule !== '') {
-    paymentSchedule = String(body.paymentSchedule);
-    if (!PAYMENT_SCHEDULES.includes(paymentSchedule)) {
-      errors.paymentSchedule = 'Choose a valid payment schedule.';
-    }
-  } else if (!partial) {
-    paymentSchedule = DEFAULT_PAYMENT_SCHEDULE;
-  }
-
-  let kickoffDate;
-  if (body.kickoffDate !== undefined) {
-    const parsed = parseKickoffDate(body.kickoffDate);
-    if (parsed.error) errors.kickoffDate = parsed.error;
-    else kickoffDate = parsed.value;
-  }
-
-  let revisionLimit;
-  if (body.revisionLimit !== undefined || !partial) {
-    const parsed = parseRevisionLimit(body.revisionLimit, { partial });
-    if (parsed.error) errors.revisionLimit = parsed.error;
-    else if (!parsed.omitted) revisionLimit = parsed.value;
-  }
-
-  let designAmountCents;
-  if (body.designAmountCents !== undefined && body.designAmountCents !== null && body.designAmountCents !== '') {
-    designAmountCents = Number(body.designAmountCents);
-    if (!Number.isInteger(designAmountCents) || designAmountCents <= 0) {
-      errors.designAmountCents = 'Enter a valid design price in cents (positive whole number).';
-    }
-  } else if (!partial) {
-    errors.designAmountCents = 'Design amount is required.';
-  }
-
-  let hostingPlan;
-  let hostingMonthlyCents = null;
-  if (body.hostingPlan !== undefined || body.hostingMonthlyCents !== undefined || !partial) {
-    if (body.hostingPlan !== undefined && body.hostingPlan !== null && body.hostingPlan !== '') {
-      hostingPlan = String(body.hostingPlan);
-      if (!HOSTING_PLANS.includes(hostingPlan)) {
-        errors.hostingPlan = 'Choose a valid hosting plan.';
-      } else {
-        hostingMonthlyCents = resolveHostingPlan(hostingPlan).amountCents;
-      }
-    } else if (
-      body.hostingMonthlyCents !== undefined &&
-      body.hostingMonthlyCents !== null &&
-      body.hostingMonthlyCents !== ''
-    ) {
-      hostingMonthlyCents = Number(body.hostingMonthlyCents);
-      if (!Number.isInteger(hostingMonthlyCents) || hostingMonthlyCents < 0) {
-        errors.hostingMonthlyCents = 'Hosting amount must be a whole number of cents (0 or more).';
-      } else {
-        hostingPlan = hostingPlanFromCents(hostingMonthlyCents);
-      }
-    } else if (!partial) {
-      hostingPlan = DEFAULT_HOSTING_PLAN;
-      hostingMonthlyCents = resolveHostingPlan(hostingPlan).amountCents;
-    }
-  }
-
-  if (Object.keys(errors).length) {
-    throw createHttpError(400, 'Please fix the highlighted fields.', 'VALIDATION_ERROR', errors);
-  }
-
-  const out = {
-    summary,
-    scope,
-    deliverables,
-    exclusions,
-    timelineSummary,
-  };
-
-  if (paymentSchedule !== undefined) out.paymentSchedule = paymentSchedule;
-  if (body.kickoffDate !== undefined) out.kickoffDate = kickoffDate;
-  if (revisionLimit !== undefined) out.revisionLimit = revisionLimit;
-
-  if (designAmountCents !== undefined) out.designAmountCents = designAmountCents;
-  if (hostingPlan !== undefined) {
-    out.hostingPlan = hostingPlan;
-    out.hostingMonthlyCents = hostingMonthlyCents;
-  }
-
-  if (body.status !== undefined) {
-    if (!PROPOSAL_STATUSES.includes(body.status)) {
-      throw createHttpError(400, 'Invalid proposal status.', 'VALIDATION_ERROR', {
-        status: 'Status must be draft, sent, revision_requested, accepted, or declined.',
-      });
-    }
-    out.status = body.status;
-  }
-
-  return out;
 }
 
 router.use(requireAdmin);
@@ -417,81 +237,19 @@ router.patch('/:id', express.json({ limit: '64kb' }), (req, res, next) => {
   }
 });
 
-function parseEmailList(value) {
-  if (value === undefined || value === null || value === '') return [];
-  return String(value)
-    .split(',')
-    .map((part) => normalizeEmail(part))
-    .filter(Boolean);
-}
-
 router.post('/:id/send', express.json({ limit: '64kb' }), async (req, res, next) => {
   try {
-    const proposal = getProposalById(req.params.id);
-    if (!proposal) {
-      throw createHttpError(404, 'Proposal not found.', 'NOT_FOUND');
-    }
-    if (!proposal.client?.email) {
-      throw createHttpError(400, 'Client email is required to send a proposal.', 'CLIENT_EMAIL_REQUIRED');
-    }
-    if (!config.publicAppUrl) {
-      throw createHttpError(500, 'PUBLIC_APP_URL is not configured.', 'CONFIG_ERROR');
-    }
-
-    const errors = {};
-    const to = normalizeEmail(req.body?.to) || normalizeEmail(proposal.client.email);
-    if (!isValidEmail(to)) {
-      errors.to = 'Enter a valid recipient email.';
-    }
-
-    const ccList = parseEmailList(req.body?.cc);
-    const invalidCc = ccList.find((email) => !isValidEmail(email));
-    if (invalidCc) {
-      errors.cc = 'Enter valid CC emails, separated by commas.';
-    }
-
-    let subject = enforceMaxLength(trimToNull(req.body?.subject), LIMITS.proposalEmailSubject);
-    if (!subject) {
-      const who = proposal.client.business_name || proposal.client.name || 'your project';
-      subject = `Website proposal for ${who}`;
-    }
-
-    let message = enforceMaxLength(trimToNull(req.body?.message), LIMITS.proposalEmailMessage);
-    if (!message) {
-      message =
-        'Thank you for sharing your project details. I put together a proposal for you to review. Use the button below to open it — you can accept, request a revision, or decline from that page.';
-    }
-
-    if (Object.keys(errors).length) {
-      throw createHttpError(400, 'Please fix the highlighted fields.', 'VALIDATION_ERROR', errors);
-    }
-
-    const prepared = prepareProposalShareToken();
-    const viewUrl = `${config.publicAppUrl}/p/${prepared.rawToken}`;
-
-    try {
-      await sendProposalShareEmail({
-        to: [to],
-        cc: ccList,
-        subject,
-        message,
-        viewUrl,
-        clientName: proposal.client.name,
-      });
-    } catch (err) {
-      if (err.code === 'EMAIL_NOT_CONFIGURED' || err.code === 'EMAIL_SEND_FAILED') {
-        throw createHttpError(502, err.message || 'Failed to send email.', err.code, err.details);
-      }
-      throw err;
-    }
-
-    createProposalShare(proposal.id, prepared);
-    const updated = markProposalSent(proposal.id);
+    const result = await sendProposalShare(req.params.id, {
+      to: req.body?.to,
+      cc: req.body?.cc,
+      subject: req.body?.subject,
+      message: req.body?.message,
+    });
 
     return res.status(200).json({
       ok: true,
-      proposal: mapProposalDetail(updated),
-      share: { expiresAt: toIsoUtc(prepared.expiresAt) },
+      proposal: mapProposalDetail(result.proposal),
+      share: result.share,
     });
   } catch (error) {
     return next(error);

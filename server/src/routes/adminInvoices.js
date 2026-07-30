@@ -2,33 +2,13 @@ const express = require('express');
 const {
   INVOICE_KIND_LABELS,
   INVOICE_STATUS_LABELS,
-} = require('../constants');
+} = require('../config/constants');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore } = require('../auth/cookies');
-const { listAdminInvoices } = require('../billing/invoices');
+const { setNoStore } = require('../services/auth/cookies');
+const { listAdminInvoices } = require('../services/billing/invoices');
+const { toIsoUtc, formatMoney } = require('../lib/format');
 
 const router = express.Router();
-
-function toIsoUtc(sqliteDatetime) {
-  if (!sqliteDatetime) return null;
-  const normalized = /Z$|[+-]\d{2}:?\d{2}$/.test(sqliteDatetime)
-    ? sqliteDatetime
-    : `${String(sqliteDatetime).replace(' ', 'T')}Z`;
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
-}
-
-function formatMoney(cents, currency = 'usd') {
-  if (cents === null || cents === undefined) return null;
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: String(currency || 'usd').toUpperCase(),
-    }).format(Number(cents) / 100);
-  } catch {
-    return `$${(Number(cents) / 100).toFixed(2)}`;
-  }
-}
 
 function mapInvoiceRow(row) {
   return {

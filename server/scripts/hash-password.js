@@ -10,7 +10,7 @@
  */
 
 const readline = require('readline');
-const { hashPassword } = require('../src/auth/password');
+const { hashPassword } = require('../src/services/auth/password');
 
 function promptHidden(question) {
   return new Promise((resolve, reject) => {

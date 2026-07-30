@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { config } = require('../config');
-const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS, PROJECT_STATUS_LABELS } = require('../constants');
+const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS, PROJECT_STATUS_LABELS } = require('../config/constants');
 const {
   listAdminInquiries,
   getAdminInquiryById,
@@ -13,20 +13,11 @@ const {
   getInquiryWithAttachments,
 } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore } = require('../auth/cookies');
+const { setNoStore } = require('../services/auth/cookies');
 const { createHttpError } = require('../utils/normalize');
+const { toIsoUtc, mapAttachmentMeta } = require('../lib/format');
 
 const router = express.Router();
-
-function toIsoUtc(sqliteDatetime) {
-  if (!sqliteDatetime) return null;
-  // SQLite CURRENT_TIMESTAMP is UTC without timezone suffix.
-  const normalized = /Z$|[+-]\d{2}:?\d{2}$/.test(sqliteDatetime)
-    ? sqliteDatetime
-    : `${String(sqliteDatetime).replace(' ', 'T')}Z`;
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
-}
 
 function sanitizeDownloadName(name) {
   const base = path.basename(String(name || 'download')).replace(/[\r\n"]/g, '');
@@ -44,16 +35,6 @@ function mapListRow(row) {
     packageLabel: row.package_slug ? PACKAGE_LABELS[row.package_slug] || row.package_slug : null,
     stage: row.stage,
     stageLabel: INQUIRY_STAGE_LABELS[row.stage] || row.stage,
-    createdAt: toIsoUtc(row.created_at),
-  };
-}
-
-function mapAttachmentMeta(row) {
-  return {
-    id: row.id,
-    originalName: row.original_name,
-    mimeType: row.mime_type,
-    sizeBytes: row.size_bytes,
     createdAt: toIsoUtc(row.created_at),
   };
 }

@@ -1,6 +1,6 @@
-const { config } = require('../config');
-const { resolveHostingPlan, HOSTING_PLANS } = require('../constants');
-const { getDb } = require('../db');
+const { config } = require('../../config');
+const { resolveHostingPlan, HOSTING_PLANS } = require('../../config/constants');
+const { getDb } = require('../../db');
 const {
   findHostingInvoiceForProject,
   recomputeProjectBillingStatus,

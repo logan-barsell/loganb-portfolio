@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { config } = require('../config');
+const { config } = require('../../config');
 const {
   createSession,
   getSessionByTokenHash,
@@ -7,7 +7,7 @@ const {
   deleteSessionByTokenHash,
   deleteExpiredSessions,
   deleteSessionsByFingerprint,
-} = require('../db');
+} = require('../../db');
 
 function hashToken(token) {
   return crypto.createHmac('sha256', config.adminSessionSecret).update(token).digest('hex');

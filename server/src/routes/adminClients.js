@@ -1,32 +1,12 @@
 const express = require('express');
-const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS, PROJECT_STATUS_LABELS } = require('../constants');
+const { PACKAGE_LABELS, INQUIRY_STAGE_LABELS, PROPOSAL_STATUS_LABELS, PROJECT_STATUS_LABELS } = require('../config/constants');
 const { listAdminClients, getAdminClientById } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore } = require('../auth/cookies');
+const { setNoStore } = require('../services/auth/cookies');
 const { createHttpError } = require('../utils/normalize');
+const { toIsoUtc, formatMoney } = require('../lib/format');
 
 const router = express.Router();
-
-function toIsoUtc(sqliteDatetime) {
-  if (!sqliteDatetime) return null;
-  const normalized = /Z$|[+-]\d{2}:?\d{2}$/.test(sqliteDatetime)
-    ? sqliteDatetime
-    : `${String(sqliteDatetime).replace(' ', 'T')}Z`;
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
-}
-
-function formatMoney(cents, currency = 'usd') {
-  if (cents === null || cents === undefined) return null;
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: String(currency || 'usd').toUpperCase(),
-    }).format(Number(cents) / 100);
-  } catch {
-    return `$${(Number(cents) / 100).toFixed(2)}`;
-  }
-}
 
 function mapClientListRow(row) {
   return {

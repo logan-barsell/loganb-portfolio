@@ -1,7 +1,7 @@
 const Stripe = require('stripe');
-const { config } = require('./config');
-const { getDb } = require('./db');
-const { createHttpError } = require('./utils/normalize');
+const { config } = require('../../config');
+const { getDb } = require('../../db');
+const { createHttpError } = require('../../utils/normalize');
 
 let stripeClient = null;
 

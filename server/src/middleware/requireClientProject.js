@@ -1,9 +1,9 @@
-const { getValidClientSession, destroyClientSession } = require('../auth/clientSessions');
+const { getValidClientSession, destroyClientSession } = require('../services/auth/clientSessions');
 const {
   getClientSessionToken,
   clearClientSessionCookie,
-} = require('../auth/clientCookies');
-const { setNoStore } = require('../auth/cookies');
+} = require('../services/auth/clientCookies');
+const { setNoStore } = require('../services/auth/cookies');
 
 function requireClientProject(req, res, next) {
   setNoStore(res);

@@ -9,7 +9,7 @@ const {
   MAX_FILES,
   MAX_FILE_SIZE_BYTES,
   MAX_TOTAL_UPLOAD_BYTES,
-} = require('../constants');
+} = require('../config/constants');
 const { createHttpError } = require('./normalize');
 
 function ensureUploadDir() {

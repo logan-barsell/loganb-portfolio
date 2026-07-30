@@ -2,7 +2,7 @@ const { createApp } = require('./app');
 const { config, assertProductionConfig } = require('./config');
 const { getDb, runMigrations, closeDb } = require('./db');
 const { ensureUploadDir } = require('./utils/uploads');
-const { startActivationTickInterval } = require('./billing/activationTick');
+const { startActivationTickInterval } = require('./services/billing/activationTick');
 
 assertProductionConfig();
 ensureUploadDir();

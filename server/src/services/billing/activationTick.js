@@ -1,4 +1,4 @@
-const { getDb } = require('../db');
+const { getDb } = require('../../db');
 const { maybeActivateProject } = require('./invoices');
 
 let lastTickUtcDay = null;

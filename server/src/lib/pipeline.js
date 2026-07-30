@@ -1,7 +1,7 @@
 const {
   PROPOSAL_STATUS_TO_PIPELINE,
   PROJECT_STATUS_TO_PIPELINE,
-} = require('./constants');
+} = require('../config/constants');
 
 /**
  * Derive canonical inquiry pipeline status from related rows.

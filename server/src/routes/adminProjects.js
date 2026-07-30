@@ -20,12 +20,11 @@ const {
   LIMITS,
   resolveHostingPlan,
   hostingPlanFromCents,
-} = require('../constants');
+} = require('../config/constants');
 const {
   listAdminProjects,
   getAdminProjectById,
   listAttachmentsForInquiry,
-  issuePortalSetupToken,
   updateProjectDomain,
 } = require('../db');
 const {
@@ -34,36 +33,15 @@ const {
   setProjectReadyForLaunch,
   maybeActivateProject,
   activationBlockReason,
-} = require('../billing/invoices');
-const { runActivationTickIfNeeded } = require('../billing/activationTick');
-const { sendPortalAccessEmail } = require('../email');
+} = require('../services/billing/invoices');
+const { runActivationTickIfNeeded } = require('../services/billing/activationTick');
+const { resendPortalAccess } = require('../services/portal');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore, requireSameOrigin } = require('../auth/cookies');
+const { setNoStore, requireSameOrigin } = require('../services/auth/cookies');
 const { createHttpError, trimToNull, enforceMaxLength } = require('../utils/normalize');
-const { config } = require('../config');
+const { toIsoUtc, formatMoney, mapAttachmentMeta } = require('../lib/format');
 
 const router = express.Router();
-
-function toIsoUtc(sqliteDatetime) {
-  if (!sqliteDatetime) return null;
-  const normalized = /Z$|[+-]\d{2}:?\d{2}$/.test(sqliteDatetime)
-    ? sqliteDatetime
-    : `${String(sqliteDatetime).replace(' ', 'T')}Z`;
-  const ms = Date.parse(normalized);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
-}
-
-function formatMoney(cents, currency = 'usd') {
-  if (cents === null || cents === undefined) return null;
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: String(currency || 'usd').toUpperCase(),
-    }).format(Number(cents) / 100);
-  } catch {
-    return `$${(Number(cents) / 100).toFixed(2)}`;
-  }
-}
 
 function mapProjectListRow(row) {
   return {
@@ -93,16 +71,6 @@ function mapProjectListRow(row) {
       : null,
     createdAt: toIsoUtc(row.created_at),
     updatedAt: toIsoUtc(row.updated_at),
-  };
-}
-
-function mapAttachmentMeta(row) {
-  return {
-    id: row.id,
-    originalName: row.original_name,
-    mimeType: row.mime_type,
-    sizeBytes: row.size_bytes,
-    createdAt: toIsoUtc(row.created_at),
   };
 }
 
@@ -384,48 +352,11 @@ router.post(
   express.json({ limit: '8kb' }),
   async (req, res, next) => {
     try {
-      if (!config.publicAppUrl) {
-        throw createHttpError(500, 'PUBLIC_APP_URL is not configured.', 'CONFIG_ERROR');
-      }
-
-      const row = getAdminProjectById(req.params.id);
-      if (!row) {
-        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
-      }
-
-      const clientEmail = row.client_email;
-      if (!clientEmail) {
-        throw createHttpError(400, 'Client email is missing.', 'VALIDATION_ERROR');
-      }
-
-      const hadPassword = Boolean(row.portal_password_hash);
-      // Rotate setup token only — keep existing password until they finish the new setup link.
-      const portalSetup = issuePortalSetupToken(row.id, { resetPassword: false });
-      if (!portalSetup) {
-        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
-      }
-
-      await sendPortalAccessEmail(
-        {
-          name: row.client_name,
-          businessName: row.client_business_name,
-          email: clientEmail,
-        },
-        {
-          projectId: row.id,
-          rawToken: portalSetup.rawToken,
-          expiresAt: portalSetup.expiresAt,
-          isReset: hadPassword,
-        }
-      );
-
-      const refreshed = getAdminProjectById(row.id);
+      const result = await resendPortalAccess(req.params.id);
       return res.status(200).json({
         ok: true,
-        project: mapProjectDetail(refreshed),
-        message: hadPassword
-          ? 'Portal setup link emailed. Current password still works until they finish setup.'
-          : 'Portal access email sent.',
+        project: mapProjectDetail(result.project),
+        message: result.message,
       });
     } catch (error) {
       return next(error);

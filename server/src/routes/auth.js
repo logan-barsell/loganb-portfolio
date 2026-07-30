@@ -1,14 +1,14 @@
 const express = require('express');
 const { config } = require('../config');
-const { verifyPassword, timingSafeEqualString } = require('../auth/password');
-const { createAdminSession, getValidSession, destroySession } = require('../auth/sessions');
+const { verifyPassword, timingSafeEqualString } = require('../services/auth/password');
+const { createAdminSession, getValidSession, destroySession } = require('../services/auth/sessions');
 const {
   getSessionToken,
   setSessionCookie,
   clearSessionCookie,
   setNoStore,
   requireSameOrigin,
-} = require('../auth/cookies');
+} = require('../services/auth/cookies');
 const { assertAdminConfigured } = require('../middleware/requireAdmin');
 const { loginLimiter } = require('../middleware/rateLimit');
 const { normalizeEmail, isValidEmail, createHttpError } = require('../utils/normalize');
