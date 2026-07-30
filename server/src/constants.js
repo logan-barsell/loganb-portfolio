@@ -9,10 +9,10 @@ const PACKAGE_SLUGS = [
 ];
 
 const PACKAGE_LABELS = {
-  starter: 'Starter Site',
-  business: 'Standard Site',
-  growth: 'Premium Site',
-  hosting: 'Managed Hosting & Support',
+  starter: 'Starter Website',
+  business: 'Growth Website',
+  growth: 'Custom Web Applications',
+  hosting: 'Managed Hosting + Support',
   redesign: 'Website Redesign',
   custom: 'Custom Site',
   'not-sure': 'Not Sure Yet',
@@ -28,8 +28,8 @@ const TIMELINE_LABELS = {
 const BUDGET_LABELS = {
   'under-900': 'Under $900',
   '900-1500': '$900–$1,500',
-  '1500-2500': '$1,500–$2,500',
-  '2500-plus': '$2,500+',
+  '1500-2500': '$1,500–$3,000',
+  '2500-plus': '$3,000+',
   'not-sure': 'Not Sure Yet',
 };
 
@@ -172,19 +172,19 @@ const HOSTING_PLAN_META = {
   none: { key: 'none', label: 'No Managed Hosting', amountCents: null, defaultPriceId: null },
   hosting_39: {
     key: 'hosting_39',
-    label: 'Managed Hosting — $39/month',
+    label: 'Managed Hosting + Support — $39/month',
     amountCents: 3900,
     defaultPriceId: 'price_temp_hosting_39',
   },
   hosting_25: {
     key: 'hosting_25',
-    label: 'Managed Hosting — $25/month',
+    label: 'Essential Hosting — $25/month',
     amountCents: 2500,
     defaultPriceId: 'price_temp_hosting_25',
   },
   hosting_10: {
     key: 'hosting_10',
-    label: 'Managed Hosting — $10/month',
+    label: 'Hosting — $10/month',
     amountCents: 1000,
     defaultPriceId: 'price_temp_hosting_10',
   },

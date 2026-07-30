@@ -126,20 +126,31 @@ function PackageChipField({ packageLabel, packageSlug }) {
   );
 }
 
-function Block({ title, children }) {
+function Block({ title, action, children }) {
   return (
     <Box sx={{ mb: 5 }}>
-      <Typography
-        variant="h5"
+      <Box
         sx={{
-          color: colors.green,
-          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          flexWrap: 'wrap',
           mb: 1.5,
-          fontSize: { xs: '1.25rem', sm: '1.5rem' },
         }}
       >
-        {title}
-      </Typography>
+        <Typography
+          variant="h5"
+          sx={{
+            color: colors.green,
+            fontWeight: 600,
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+          }}
+        >
+          {title}
+        </Typography>
+        {action || null}
+      </Box>
       <Divider sx={{ borderColor: 'rgba(149, 99, 187, 0.35)', mb: 2.5 }} />
       {children}
     </Box>
@@ -287,11 +298,26 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
   const [domainName, setDomainName] = useState(project.domainName || '');
   const [domainStatus, setDomainStatus] = useState(project.domainStatus || 'unknown');
   const [domainSaving, setDomainSaving] = useState(false);
+  const [editingDomain, setEditingDomain] = useState(false);
 
   useEffect(() => {
+    if (editingDomain) return;
     setDomainName(project.domainName || '');
     setDomainStatus(project.domainStatus || 'unknown');
-  }, [project.domainName, project.domainStatus]);
+  }, [project.domainName, project.domainStatus, editingDomain]);
+
+  const startEditingDomain = () => {
+    setDomainName(project.domainName || '');
+    setDomainStatus(project.domainStatus || 'unknown');
+    setEditingDomain(true);
+  };
+
+  const cancelEditingDomain = () => {
+    if (domainSaving) return;
+    setDomainName(project.domainName || '');
+    setDomainStatus(project.domainStatus || 'unknown');
+    setEditingDomain(false);
+  };
 
   useEffect(() => {
     const logout = async () => {
@@ -341,6 +367,7 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
         domainStatus,
       });
       onProjectUpdate?.(data.project);
+      setEditingDomain(false);
       toast.success('Domain updated.');
     } catch (err) {
       toast.error(err.message || 'Could not update domain.');
@@ -478,38 +505,73 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
           <Field label="Phone" value={project.client?.phone} />
         </Block>
 
-        <Block title="Domain">
-          <Stack spacing={2} sx={{ maxWidth: 480 }}>
-            <TextField
-              label="Domain Name"
-              value={domainName}
-              onChange={(e) => setDomainName(e.target.value)}
-              fullWidth
-              helperText="e.g. example.com"
-              sx={fieldSx}
-            />
-            <TextField
-              select
-              label="Domain Status"
-              value={domainStatus}
-              onChange={(e) => setDomainStatus(e.target.value)}
-              fullWidth
-              sx={fieldSx}
-              SelectProps={{ MenuProps: selectMenuProps }}
-            >
-              {DOMAIN_STATUS_OPTIONS.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            {project.inquiry?.domainInfo ? (
-              <Field label="Domain Notes" value={project.inquiry.domainInfo} />
-            ) : null}
-            <CtaButton size="medium" onClick={saveDomain} disabled={domainSaving}>
-              {domainSaving ? 'Saving…' : 'Save Domain'}
-            </CtaButton>
-          </Stack>
+        <Block
+          title="Domain"
+          action={
+            !editingDomain ? (
+              <CtaButton type="button" size="medium" onClick={startEditingDomain}>
+                Edit
+              </CtaButton>
+            ) : null
+          }
+        >
+          {editingDomain ? (
+            <Stack spacing={2} sx={{ maxWidth: 480 }}>
+              <TextField
+                label="Domain Name"
+                value={domainName}
+                onChange={(e) => setDomainName(e.target.value)}
+                fullWidth
+                helperText="e.g. example.com"
+                disabled={domainSaving}
+                sx={fieldSx}
+              />
+              <TextField
+                select
+                label="Domain Status"
+                value={domainStatus}
+                onChange={(e) => setDomainStatus(e.target.value)}
+                fullWidth
+                disabled={domainSaving}
+                sx={fieldSx}
+                SelectProps={{ MenuProps: selectMenuProps }}
+              >
+                {DOMAIN_STATUS_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              {project.inquiry?.domainInfo ? (
+                <Field label="Domain Notes" value={project.inquiry.domainInfo} />
+              ) : null}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <CtaButton size="medium" onClick={saveDomain} disabled={domainSaving}>
+                  {domainSaving ? 'Saving…' : 'Save'}
+                </CtaButton>
+                <CtaButton
+                  type="button"
+                  size="medium"
+                  secondary
+                  onClick={cancelEditingDomain}
+                  disabled={domainSaving}
+                >
+                  Cancel
+                </CtaButton>
+              </Stack>
+            </Stack>
+          ) : (
+            <>
+              <Field label="Domain Name" value={project.domainName || '—'} />
+              <Field
+                label="Domain Status"
+                value={project.domainStatusLabel || project.domainStatus}
+              />
+              {project.inquiry?.domainInfo ? (
+                <Field label="Domain Notes" value={project.inquiry.domainInfo} />
+              ) : null}
+            </>
+          )}
         </Block>
 
         <Block title="Project Overview">

@@ -46,39 +46,40 @@ export const services = [
   },
   {
     id: 'hosting-support',
-    title: 'Managed Hosting & Support',
+    title: 'Managed Hosting + Support',
     short:
       'Professional hosting, maintenance, and support without the technical hassle.',
     whoFor:
       'Business owners who want their website professionally managed without worrying about hosting, updates, or technical maintenance.',
     included: [
-      'Reliable hosting',
-      'SSL configuration',
-      'Backups',
-      'Monitoring',
+      'Secure cloud hosting',
+      'SSL certificate',
+      'Automatic backups',
       'Security updates',
-      'Small maintenance fixes',
-      'Domain and DNS guidance',
-      'Ongoing technical support',
+      'Uptime monitoring',
+      'Minor content updates',
+      'Technical support',
     ],
     outcome:
       'Peace of mind knowing your website stays online, secure, backed up, and professionally maintained.',
+    note:
+      'Essential Hosting ($25/month) is also available on the Pricing page for hosting without ongoing content updates and support.',
     priceLabel: 'Starting at $39/month',
     packageSlug: 'hosting',
   },
   {
     id: 'custom-features',
-    title: 'Custom Website Features',
+    title: 'Custom Web Applications',
     short:
-      'Purpose-built tools and integrations for needs beyond a standard website.',
+      'Purpose-built software and integrations for needs beyond a marketing website.',
     whoFor:
-      'Businesses that need functionality beyond a standard marketing website.',
+      'Businesses with unique processes that need portals, dashboards, workflows, or other custom application features.',
     examples: [
+      'Client portals',
+      'Admin dashboards',
       'Booking systems',
-      'Customer portals',
       'Membership areas',
       'API integrations',
-      'Custom forms',
       'Automation workflows',
       'Business-specific functionality',
     ],
@@ -91,10 +92,11 @@ export const services = [
       'Documentation',
     ],
     outcome:
-      'Custom features designed specifically around how your business operates.',
+      'Custom software designed specifically around how your business operates.',
     note:
-      'Pricing depends on the complexity and scope of the requested functionality. A personalized proposal will be provided after discussing your requirements.',
-    priceLabel: 'Custom Quote',
-    packageSlug: 'custom',
+      'Pricing depends on complexity and scope. Custom Web Applications start at $3,000+. A personalized proposal is provided after discussing your requirements.',
+    priceLabel: 'Starting at $3,000+',
+    packageSlug: 'growth',
+    ctaLabel: 'Start a Project',
   },
 ];

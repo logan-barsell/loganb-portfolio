@@ -26,8 +26,8 @@ export const timelineOptions = [
 export const budgetOptions = [
   { value: 'under-900', label: 'Under $900' },
   { value: '900-1500', label: '$900–$1,500' },
-  { value: '1500-2500', label: '$1,500–$2,500' },
-  { value: '2500-plus', label: '$2,500+' },
+  { value: '1500-2500', label: '$1,500–$3,000' },
+  { value: '2500-plus', label: '$3,000+' },
   { value: 'not-sure', label: 'Not Sure Yet' },
 ];
 

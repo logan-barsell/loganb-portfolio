@@ -5,7 +5,7 @@ import { DEFAULT_HOSTING_PLAN, resolveHostingPlan } from "./hostingPlans";
 const PACKAGE_CENTS = {
   starter: 90000,
   business: 150000,
-  growth: 250000,
+  growth: 300000,
 };
 
 function centsToDollarsInput(cents) {
@@ -48,9 +48,9 @@ const FALLBACK_DEFAULTS = {
 const PACKAGE_DEFAULTS = {
   starter: {
     summary:
-      "A focused Starter Site that gets your business online with a clear set of core pages and a professional first impression.",
+      "A focused Starter Website that establishes your online presence with a clear set of core pages and a professional first impression.",
     scope:
-      "Design and build a custom starter marketing website (approximately 3–5 core pages). Includes mobile-responsive layout, essential business pages, contact form and CTAs, basic SEO setup, and launch support.",
+      "Design and build a custom starter brochure-style website. Includes responsive layout for desktop, tablet, and mobile; Home, About, Services, Gallery or Portfolio, and Contact pages; contact form; Google Maps; social links; basic on-page SEO; performance optimization; and launch support.",
     deliverables: (
       sitePackages.find((p) => p.id === "starter")?.highlights || []
     ).join("\n"),
@@ -64,9 +64,9 @@ const PACKAGE_DEFAULTS = {
   },
   business: {
     summary:
-      "A Standard Site built to strengthen your online presence and help generate leads with a clear structure and strong calls-to-action.",
+      "A Growth Website built to generate leads, showcase your services in depth, and streamline customer interactions.",
     scope:
-      "Design and build a custom standard marketing website (approximately 6–10 pages). Includes expanded content structure, service pages, gallery or reviews section where needed, multiple CTAs, analytics setup, SEO-friendly structure, and launch support.",
+      "Design and build a custom Growth Website that includes everything in Starter, plus expanded site architecture, individual service pages, reviews and testimonials, FAQ, booking or scheduling and online payment integrations as scoped, lead capture improvements, analytics setup, enhanced SEO structure, and additional third-party integrations.",
     deliverables: (
       sitePackages.find((p) => p.id === "business")?.highlights || []
     ).join("\n"),
@@ -80,14 +80,14 @@ const PACKAGE_DEFAULTS = {
   },
   growth: {
     summary:
-      "A Premium Site for businesses that need advanced functionality, custom layouts, or deeper integrations beyond a standard marketing site.",
+      "A Custom Web Application tailored to your business—from client portals and admin tools to workflow automation and SaaS-style platforms.",
     scope:
-      "Design and build a custom premium website with advanced layouts and agreed custom functionality. Includes third-party integrations as scoped, content strategy support as needed, priority launch support, and a more tailored delivery plan.",
+      "Design and build custom software based on your requirements. Scope may include authentication, dashboards, client portals, custom databases, workflow automation, API integrations, analytics and reporting, and other agreed application features. Exact deliverables are confirmed in this proposal before work begins.",
     deliverables: (
       sitePackages.find((p) => p.id === "growth")?.highlights || []
     ).join("\n"),
     exclusions: `${SHARED_EXCLUSIONS}\nFeatures or integrations not listed in Scope / Deliverables`,
-    timelineSummary: "4–6 weeks after kickoff and content handoff",
+    timelineSummary: "4–8 weeks after kickoff and requirements lock, depending on complexity",
     revisionLimit: 3,
     paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
     designAmountCents: PACKAGE_CENTS.growth,
@@ -123,19 +123,21 @@ const PACKAGE_DEFAULTS = {
       "Custom website design and development based on the requirements discussed. Scope, pages, and features will be confirmed in this proposal before work begins.",
   },
   hosting: {
-    summary: "Managed hosting and ongoing technical support for your website.",
+    summary: "Managed Hosting + Support for your website.",
     scope:
-      "Provide managed hosting, backups, uptime monitoring, essential updates, and ongoing technical support for your website.",
+      "Provide Managed Hosting + Support: secure cloud hosting, SSL, automatic backups, security updates, uptime monitoring, minor content updates, and ongoing technical support.",
     deliverables: [
       "Managed hosting setup",
-      "Automated backups",
+      "SSL certificate",
+      "Automatic backups",
+      "Security updates",
       "Uptime monitoring",
-      "Essential platform updates",
+      "Minor content updates",
       "Ongoing technical support",
     ].join("\n"),
     exclusions: [
       "New feature development or redesign work",
-      "Copywriting or content updates beyond minor technical fixes",
+      "Copywriting or content updates beyond minor edits",
       "Paid advertising or SEO campaigns",
     ].join("\n"),
     timelineSummary: "Setup within 1 week of kickoff",

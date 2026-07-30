@@ -13,7 +13,7 @@ const Services = () => {
       <Section title="Services">
         <Typography sx={{ color: colors.muted, mb: 4, maxWidth: 720 }}>
           Clear offerings for small businesses—whether you need a new site, a redesign, hosting, or
-          custom features.
+          a custom web application.
         </Typography>
         <Grid container spacing={4}>
           {services.map((service) => (

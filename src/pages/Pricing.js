@@ -22,8 +22,9 @@ const Pricing = () => {
     <Box sx={{ pb: 6 }}>
       <Section title="Pricing">
         <Typography sx={{ color: colors.muted, mb: 4, maxWidth: 720 }}>
-          Transparent starting prices. Every project receives a personalized scope and final
-          proposal.
+          Transparent starting prices. Every project is unique—the prices below are starting points,
+          with each project receiving a personalized proposal based on its scope, functionality, and
+          goals.
         </Typography>
         <Grid container spacing={3}>
           {sitePackages.map((pkg) => (
@@ -63,7 +64,7 @@ const Pricing = () => {
                   {pkg.helperText}
                 </Typography>
                 <CtaButton to={`/start?package=${pkg.id}`} sx={{ mt: 2, alignSelf: 'flex-start' }}>
-                  Start with {pkg.name}
+                  Start
                 </CtaButton>
               </Box>
             </Grid>
@@ -74,7 +75,7 @@ const Pricing = () => {
       <Section title="Hosting Options">
         <Grid container spacing={3}>
           {hostingPlans.map((plan) => (
-            <Grid item xs={12} sm={6} key={plan.id}>
+            <Grid item xs={12} md={4} key={plan.id}>
               <Box sx={{ p: 3, backgroundColor: colors.cardBg, height: '100%' }}>
                 <Typography variant="h6" sx={{ color: colors.text, fontWeight: 600 }}>
                   {plan.name}
@@ -93,8 +94,8 @@ const Pricing = () => {
 
       <Section title="Custom Projects">
         <Typography sx={{ color: colors.muted, mb: 3, maxWidth: 720 }}>
-          Need something outside these packages? Share your goals and I&apos;ll prepare a custom
-          estimate. {paymentScheduleNote}
+          Need a redesign or something outside these packages? Share your goals and I&apos;ll
+          prepare a custom estimate. {paymentScheduleNote}
         </Typography>
         <CtaButton to="/start?package=custom">Start with Custom Site</CtaButton>
       </Section>

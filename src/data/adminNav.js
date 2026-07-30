@@ -36,9 +36,9 @@ export function resolveStageLabel(stage, apiLabel) {
 
 export function resolvePackageLabel(slug, apiLabel) {
   if (slug && packageLabels[slug]) return packageLabels[slug];
-  if (apiLabel === 'Starter') return 'Starter Site';
-  if (apiLabel === 'Standard') return 'Standard Site';
-  if (apiLabel === 'Premium') return 'Premium Site';
+  if (apiLabel === 'Starter' || apiLabel === 'Starter Site') return 'Starter Website';
+  if (apiLabel === 'Standard' || apiLabel === 'Standard Site') return 'Growth Website';
+  if (apiLabel === 'Premium' || apiLabel === 'Premium Site') return 'Custom Web Applications';
   if (apiLabel === 'Not Sure') return 'Not Sure Yet';
   return apiLabel || (slug ? packageLabels[slug] : null) || null;
 }
@@ -49,7 +49,7 @@ export const inquiryTypeOptions = [
   { value: 'project', label: 'Project Inquiry' },
 ];
 
-/** Type chip: Contact Message, or package name (Starter Site…), or Project Inquiry. */
+/** Type chip: Contact Message, or package name (Starter Website…), or Project Inquiry. */
 export function inquiryTypeChipLabel(type, packageLabel, packageSlug) {
   if (type === 'contact') return 'Contact Message';
   return resolvePackageLabel(packageSlug, packageLabel) || 'Project Inquiry';
