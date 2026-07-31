@@ -38,6 +38,8 @@ function mapClientInquiry(row) {
 }
 
 function mapClientProposal(row) {
+  const packageSlug = row.package_slug || null;
+  const projectStatus = row.project_status || null;
   return {
     id: row.id,
     inquiryId: row.inquiry_id,
@@ -46,12 +48,24 @@ function mapClientProposal(row) {
     designAmountCents: row.design_amount_cents,
     designAmountLabel: formatMoney(row.design_amount_cents, row.currency),
     currency: row.currency,
+    packageSlug,
+    packageLabel: packageSlug ? PACKAGE_LABELS[packageSlug] || packageSlug : null,
+    clientName: row.inquiry_name || null,
+    businessName: row.inquiry_business_name || null,
+    projectStatus,
+    projectStatusLabel: projectStatus
+      ? PROJECT_STATUS_LABELS[projectStatus] || projectStatus
+      : null,
     sentAt: toIsoUtc(row.sent_at),
+    acceptedAt: toIsoUtc(row.accepted_at),
+    declinedAt: toIsoUtc(row.declined_at),
     createdAt: toIsoUtc(row.created_at),
+    updatedAt: toIsoUtc(row.updated_at),
   };
 }
 
 function mapClientProject(row) {
+  const packageSlug = row.proposal_package_slug || null;
   return {
     id: row.id,
     name: row.name || null,
@@ -59,6 +73,11 @@ function mapClientProject(row) {
     statusLabel: PROJECT_STATUS_LABELS[row.status] || row.status,
     proposalId: row.proposal_id || null,
     inquiryId: row.inquiry_id || null,
+    clientName: row.client_name || null,
+    clientBusinessName: row.inquiry_business_name || row.client_business_name || null,
+    packageSlug,
+    packageLabel: packageSlug ? PACKAGE_LABELS[packageSlug] || packageSlug : null,
+    kickoffDate: row.proposal_kickoff_date || null,
     createdAt: toIsoUtc(row.created_at),
   };
 }

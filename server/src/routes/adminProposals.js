@@ -13,16 +13,16 @@ const {
   listAdminProposals,
   getProposalById,
   createProposal,
-  updateProposal,
   getAdminInquiryById,
   listProposalsByInquiryId,
   listRevisionRequestsForProposal,
   listAttachmentsForInquiry,
+  proposalContentChangedSinceLastSend,
 } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { setNoStore } = require('../services/auth/cookies');
 const { trimToNull, createHttpError } = require('../utils/normalize');
-const { parseProposalBody, sendProposalShare } = require('../services/proposals');
+const { parseProposalBody, sendProposalShare, updateAdminProposal, beginAdminRevision } = require('../services/proposals');
 const { toIsoUtc, formatMoney, mapAttachmentMeta } = require('../lib/format');
 
 const router = express.Router();
@@ -47,17 +47,18 @@ function mapProposalListRow(row) {
     inquiryId: row.inquiry_id,
     clientId: row.client_id,
     clientName: row.client_name,
-    clientBusinessName: row.client_business_name,
+    clientBusinessName: row.inquiry_business_name || row.client_business_name,
     clientEmail: row.client_email,
     inquiryStage: row.inquiry_stage || null,
     inquiryStageLabel: row.inquiry_stage
       ? INQUIRY_STAGE_LABELS[row.inquiry_stage] || row.inquiry_stage
       : null,
     inquiryType: row.inquiry_type || null,
-    packageSlug: row.inquiry_package_slug || null,
-    packageLabel: row.inquiry_package_slug
-      ? PACKAGE_LABELS[row.inquiry_package_slug] || row.inquiry_package_slug
-      : null,
+    packageSlug: row.proposal_package_slug || row.inquiry_package_slug || null,
+    packageLabel: (() => {
+      const slug = row.proposal_package_slug || row.inquiry_package_slug;
+      return slug ? PACKAGE_LABELS[slug] || slug : null;
+    })(),
   };
 }
 
@@ -85,6 +86,10 @@ function mapProposalDetail(row) {
     kickoffDate: row.kickoff_date || null,
     revisionLimit: row.revision_limit ?? null,
     revisionLimitLabel: formatRevisionLimitLabel(row.revision_limit),
+    packageSlug: row.package_slug || null,
+    packageLabel: row.package_slug
+      ? PACKAGE_LABELS[row.package_slug] || row.package_slug
+      : null,
     designAmountCents: row.design_amount_cents,
     designAmountLabel: formatMoney(row.design_amount_cents, row.currency),
     hostingMonthlyCents: row.hosting_monthly_cents,
@@ -95,7 +100,11 @@ function mapProposalDetail(row) {
     ).label,
     currency: row.currency,
     sentAt: toIsoUtc(row.sent_at),
+    acceptedAt: toIsoUtc(row.accepted_at),
+    declinedAt: toIsoUtc(row.declined_at),
     declineReason: row.decline_reason || null,
+    contentChangedSinceSend: proposalContentChangedSinceLastSend(row),
+    hasBeenSent: Boolean(row.last_sent_content_hash || row.sent_at),
     createdAt: toIsoUtc(row.created_at),
     updatedAt: toIsoUtc(row.updated_at),
     inquiryId: row.inquiry_id,
@@ -108,7 +117,7 @@ function mapProposalDetail(row) {
           name: row.client.name,
           email: row.client.email,
           phone: row.client.phone,
-          businessName: row.client.business_name,
+          businessName: row.inquiry?.business_name || row.client.business_name,
         }
       : null,
     inquiry: row.inquiry
@@ -128,6 +137,7 @@ function mapProposalDetail(row) {
             ? INQUIRY_STAGE_LABELS[row.inquiry.stage] || row.inquiry.stage
             : null,
           websiteGoals: row.inquiry.website_goals,
+          requestedFeatures: row.inquiry.requested_features,
           createdAt: toIsoUtc(row.inquiry.created_at),
           clientId: row.inquiry.client_id,
         }
@@ -209,6 +219,9 @@ router.post('/', express.json({ limit: '64kb' }), (req, res, next) => {
     }
 
     const fields = parseProposalBody(req.body || {}, { partial: false });
+    if (!fields.packageSlug && inquiry.package_slug) {
+      fields.packageSlug = inquiry.package_slug;
+    }
     const proposal = createProposal({
       inquiryId,
       clientId: inquiry.client_id,
@@ -224,13 +237,17 @@ router.post('/', express.json({ limit: '64kb' }), (req, res, next) => {
 
 router.patch('/:id', express.json({ limit: '64kb' }), (req, res, next) => {
   try {
-    const existing = getProposalById(req.params.id);
-    if (!existing) {
-      throw createHttpError(404, 'Proposal not found.', 'NOT_FOUND');
-    }
-
     const fields = parseProposalBody(req.body || {}, { partial: true });
-    const proposal = updateProposal(req.params.id, fields);
+    const proposal = updateAdminProposal(req.params.id, fields);
+    return res.status(200).json({ ok: true, proposal: mapProposalDetail(proposal) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/:id/begin-revision', (req, res, next) => {
+  try {
+    const proposal = beginAdminRevision(req.params.id);
     return res.status(200).json({ ok: true, proposal: mapProposalDetail(proposal) });
   } catch (error) {
     return next(error);
@@ -250,6 +267,7 @@ router.post('/:id/send', express.json({ limit: '64kb' }), async (req, res, next)
       ok: true,
       proposal: mapProposalDetail(result.proposal),
       share: result.share,
+      revised: Boolean(result.revised),
     });
   } catch (error) {
     return next(error);

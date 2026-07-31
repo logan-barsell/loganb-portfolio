@@ -74,10 +74,19 @@ function getProjectByProposalId(proposalId, database = getDb()) {
 function getProjectForInquiry(inquiryId, database = getDb()) {
   return database
     .prepare(
-      `SELECT id, status, name, created_at, updated_at, proposal_id, inquiry_id, client_id
-       FROM projects
-       WHERE inquiry_id = ?
-       ORDER BY created_at DESC, id DESC
+      `SELECT
+         p.id, p.status, p.name, p.created_at, p.updated_at, p.proposal_id, p.inquiry_id, p.client_id,
+         pr.package_slug AS proposal_package_slug,
+         pr.kickoff_date AS proposal_kickoff_date,
+         c.name AS client_name,
+         c.business_name AS client_business_name,
+         i.business_name AS inquiry_business_name
+       FROM projects p
+       LEFT JOIN proposals pr ON pr.id = p.proposal_id
+       LEFT JOIN clients c ON c.id = p.client_id
+       LEFT JOIN inquiries i ON i.id = p.inquiry_id
+       WHERE p.inquiry_id = ?
+       ORDER BY p.created_at DESC, p.id DESC
        LIMIT 1`
     )
     .get(inquiryId);
@@ -122,7 +131,7 @@ function listAdminProjects({
   const q = String(search || '').trim();
   if (q) {
     where.push(
-      `(p.name LIKE @search ESCAPE '\\' OR c.name LIKE @search ESCAPE '\\' OR c.business_name LIKE @search ESCAPE '\\' OR c.email LIKE @search ESCAPE '\\')`
+      `(p.name LIKE @search ESCAPE '\\' OR c.name LIKE @search ESCAPE '\\' OR c.business_name LIKE @search ESCAPE '\\' OR IFNULL(i.business_name, '') LIKE @search ESCAPE '\\' OR c.email LIKE @search ESCAPE '\\')`
     );
     params.search = `%${escapeLike(q)}%`;
   }
@@ -144,6 +153,8 @@ function listAdminProjects({
       `SELECT COUNT(*) AS count
        FROM projects p
        INNER JOIN clients c ON c.id = p.client_id
+       LEFT JOIN inquiries i ON i.id = p.inquiry_id
+       LEFT JOIN proposals pr ON pr.id = p.proposal_id
        ${whereSql}`
     )
     .get(params).count;
@@ -156,10 +167,13 @@ function listAdminProjects({
          p.design_payment_status, p.hosting_status,
          c.name AS client_name, c.business_name AS client_business_name, c.email AS client_email,
          i.stage AS inquiry_stage, i.type AS inquiry_type,
-         i.package_slug AS inquiry_package_slug
+         i.package_slug AS inquiry_package_slug,
+         i.business_name AS inquiry_business_name,
+         pr.package_slug AS proposal_package_slug
        FROM projects p
        INNER JOIN clients c ON c.id = p.client_id
        LEFT JOIN inquiries i ON i.id = p.inquiry_id
+       LEFT JOIN proposals pr ON pr.id = p.proposal_id
        ${whereSql}
        ORDER BY ${sortColumn} ${sortDir}, p.id ${sortDir}
        LIMIT @limit OFFSET @offset`
@@ -206,8 +220,11 @@ function getAdminProjectById(id, database = getDb()) {
          pr.exclusions AS proposal_exclusions, pr.timeline_summary AS proposal_timeline_summary,
          pr.payment_schedule AS proposal_payment_schedule, pr.kickoff_date AS proposal_kickoff_date,
          pr.revision_limit AS proposal_revision_limit,
+         pr.package_slug AS proposal_package_slug,
          pr.decline_reason AS proposal_decline_reason,
-         pr.sent_at AS proposal_sent_at, pr.created_at AS proposal_created_at
+         pr.sent_at AS proposal_sent_at, pr.accepted_at AS proposal_accepted_at,
+         pr.declined_at AS proposal_declined_at, pr.updated_at AS proposal_updated_at,
+         pr.created_at AS proposal_created_at
        FROM projects p
        INNER JOIN clients c ON c.id = p.client_id
        LEFT JOIN inquiries i ON i.id = p.inquiry_id

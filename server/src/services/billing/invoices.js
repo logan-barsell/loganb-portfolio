@@ -7,6 +7,7 @@ const {
 } = require('../../config/constants');
 const { config } = require('../../config');
 const { getDb } = require('../../db');
+const { createHttpError } = require('../../utils/normalize');
 
 function toIsoSqliteNow() {
   return new Date().toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
@@ -219,11 +220,13 @@ function setProjectSubscription(projectId, subscriptionId, database = getDb()) {
 /**
  * Activate on_hold project when payment + kickoff rules pass.
  * Admin mark-started bypasses via started_by=admin elsewhere.
+ * @returns {{ project: object|null, activated: boolean }}
  */
 function maybeActivateProject(projectId, database = getDb()) {
   const { syncInquiryPipeline } = require('../../db');
   const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
-  if (!project || project.status !== 'on_hold') return project;
+  if (!project) return { project: null, activated: false };
+  if (project.status !== 'on_hold') return { project, activated: false };
 
   const proposal = project.proposal_id
     ? database.prepare('SELECT * FROM proposals WHERE id = ?').get(project.proposal_id)
@@ -235,7 +238,10 @@ function maybeActivateProject(projectId, database = getDb()) {
 
   if (!paymentOk || !dateOk) {
     recomputeProjectBillingStatus(projectId, database);
-    return database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+    return {
+      project: database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId),
+      activated: false,
+    };
   }
 
   const startedAt = toIsoSqliteNow();
@@ -255,13 +261,27 @@ function maybeActivateProject(projectId, database = getDb()) {
   }
 
   recomputeProjectBillingStatus(projectId, database);
-  return database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  return {
+    project: database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId),
+    activated: true,
+  };
 }
 
+/**
+ * @returns {{ project: object|null, started: boolean }}
+ */
 function markProjectStartedByAdmin(projectId, database = getDb()) {
   const { syncInquiryPipeline } = require('../../db');
   const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
-  if (!project) return null;
+  if (!project) return { project: null, started: false };
+  if (project.status === 'active') return { project, started: false };
+  if (project.status !== 'on_hold') {
+    throw createHttpError(
+      400,
+      'Only on-hold projects can be marked as started.',
+      'INVALID_STATUS'
+    );
+  }
 
   const startedAt = toIsoSqliteNow();
   database
@@ -280,14 +300,28 @@ function markProjectStartedByAdmin(projectId, database = getDb()) {
   }
 
   recomputeProjectBillingStatus(projectId, database);
-  return database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  return {
+    project: database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId),
+    started: true,
+  };
 }
 
+/**
+ * @returns {{ project: object|null, unlocked: boolean }}
+ */
 function setProjectReadyForLaunch(projectId, ready, database = getDb()) {
   const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
-  if (!project) return null;
+  if (!project) return { project: null, unlocked: false };
 
   if (ready) {
+    if (project.status !== 'completed') {
+      throw createHttpError(
+        400,
+        'Mark the project as completed before unlocking launch.',
+        'PROJECT_NOT_COMPLETED'
+      );
+    }
+    const alreadyReady = Boolean(project.ready_for_launch_at);
     database
       .prepare(
         `UPDATE projects SET
@@ -296,18 +330,56 @@ function setProjectReadyForLaunch(projectId, ready, database = getDb()) {
          WHERE id = ?`
       )
       .run(toIsoSqliteNow(), projectId);
-  } else {
-    database
-      .prepare(
-        `UPDATE projects SET
-           ready_for_launch_at = NULL,
-           updated_at = datetime('now')
-         WHERE id = ?`
-      )
-      .run(projectId);
+    return {
+      project: database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId),
+      unlocked: !alreadyReady,
+    };
   }
 
-  return database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  database
+    .prepare(
+      `UPDATE projects SET
+         ready_for_launch_at = NULL,
+         updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(projectId);
+  return {
+    project: database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId),
+    unlocked: false,
+  };
+}
+
+/**
+ * @returns {{ project: object|null, completed: boolean }}
+ */
+function markProjectCompleted(projectId, database = getDb()) {
+  const { syncInquiryPipeline } = require('../../db');
+  const project = database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId);
+  if (!project) return { project: null, completed: false };
+  if (project.status === 'completed') return { project, completed: false };
+  if (project.status !== 'active') {
+    throw createHttpError(
+      400,
+      'Only active projects can be marked as completed.',
+      'INVALID_STATUS'
+    );
+  }
+
+  database
+    .prepare(
+      `UPDATE projects SET status = 'completed', updated_at = datetime('now') WHERE id = ?`
+    )
+    .run(projectId);
+
+  if (project.inquiry_id) {
+    syncInquiryPipeline(project.inquiry_id, database);
+  }
+
+  return {
+    project: database.prepare('SELECT * FROM projects WHERE id = ?').get(projectId),
+    completed: true,
+  };
 }
 
 function activationBlockReason(project, proposal, invoices) {
@@ -423,6 +495,7 @@ module.exports = {
   maybeActivateProject,
   markProjectStartedByAdmin,
   setProjectReadyForLaunch,
+  markProjectCompleted,
   activationBlockReason,
   paymentOkForActivation,
   dateOkForActivation,

@@ -1,5 +1,6 @@
 const {
   PACKAGE_LABELS,
+  PACKAGE_SLUGS,
   CLIENT_PROPOSAL_STATUS_LABELS,
   PROPOSAL_STATUS_LABELS,
   PROPOSAL_STATUSES,
@@ -17,6 +18,10 @@ const { config } = require('../config');
 const {
   getProposalById,
   markProposalSent,
+  beginProposalRevision,
+  updateProposal,
+  proposalContentChangedSinceLastSend,
+  hashProposalContent,
   createProposalShare,
   prepareProposalShareToken,
   listRevisionRequestsForProposal,
@@ -24,13 +29,16 @@ const {
   acceptProposal,
   declineProposal,
   requestProposalRevision,
+  deleteSharesForProposal,
 } = require('../db');
 const {
   sendProposalShareEmail,
+  sendProposalRevisedEmail,
   sendProposalAcceptedEmails,
   sendProposalRevisionEmails,
   sendProposalDeclinedEmails,
 } = require('./email');
+const { DEFAULT_REVISED_MESSAGE } = require('./email/templates/proposalRevised');
 const {
   trimToNull,
   enforceMaxLength,
@@ -44,6 +52,74 @@ const DEFAULT_SHARE_MESSAGE =
   'Thank you for sharing your project details. I put together a proposal for you to review. Use the button below to open it — you can accept, request a revision, or decline from that page.';
 
 const SHARE_NOT_FOUND_MESSAGE = 'This proposal link is invalid or has expired.';
+
+function engagementBusinessName(proposal) {
+  return (
+    proposal?.inquiry?.business_name ||
+    proposal?.client?.business_name ||
+    proposal?.inquiry?.name ||
+    proposal?.client?.name ||
+    null
+  );
+}
+
+function assertProposalEditable(proposal) {
+  if (!proposal) {
+    throw createHttpError(404, 'Proposal not found.', 'NOT_FOUND');
+  }
+  if (proposal.status === 'accepted') {
+    throw createHttpError(
+      400,
+      'Accepted proposals are locked and cannot be edited.',
+      'PROPOSAL_LOCKED'
+    );
+  }
+  if (proposal.status === 'sent' || proposal.status === 'revision_requested') {
+    throw createHttpError(
+      400,
+      'Start a revision before editing a live proposal.',
+      'PROPOSAL_MUST_REVISE'
+    );
+  }
+}
+
+function updateAdminProposal(proposalId, fields) {
+  const existing = getProposalById(proposalId);
+  assertProposalEditable(existing);
+
+  const patch = { ...fields };
+  if (existing.status === 'declined') {
+    patch.status = 'draft';
+    patch.clearDeclineReason = true;
+    // Fingerprint last live content if missing so later resend can detect changes.
+    if (!existing.last_sent_content_hash) {
+      patch.lastSentContentHash = hashProposalContent(existing);
+    }
+    deleteSharesForProposal(proposalId);
+  }
+
+  // Do not allow clients to set status via patch body for gated statuses
+  if (patch.status === 'accepted' || patch.status === 'sent') {
+    delete patch.status;
+  }
+
+  return updateProposal(proposalId, patch);
+}
+
+function beginAdminRevision(proposalId) {
+  const existing = getProposalById(proposalId);
+  if (!existing) {
+    throw createHttpError(404, 'Proposal not found.', 'NOT_FOUND');
+  }
+  if (existing.status === 'accepted') {
+    throw createHttpError(
+      400,
+      'Accepted proposals are locked and cannot be revised.',
+      'PROPOSAL_LOCKED'
+    );
+  }
+  return beginProposalRevision(proposalId);
+}
 
 function parseKickoffDate(value) {
   const raw = trimToNull(value);
@@ -108,6 +184,16 @@ function parseProposalBody(body, { partial = false } = {}) {
     else if (!parsed.omitted) revisionLimit = parsed.value;
   }
 
+  let packageSlug;
+  if (body.packageSlug !== undefined && body.packageSlug !== null && body.packageSlug !== '') {
+    packageSlug = String(body.packageSlug);
+    if (!PACKAGE_SLUGS.includes(packageSlug)) {
+      errors.packageSlug = 'Choose a valid package.';
+    }
+  } else if (!partial) {
+    errors.packageSlug = 'Package is required.';
+  }
+
   let designAmountCents;
   if (body.designAmountCents !== undefined && body.designAmountCents !== null && body.designAmountCents !== '') {
     designAmountCents = Number(body.designAmountCents);
@@ -157,6 +243,7 @@ function parseProposalBody(body, { partial = false } = {}) {
     timelineSummary,
   };
 
+  if (packageSlug !== undefined) out.packageSlug = packageSlug;
   if (paymentSchedule !== undefined) out.paymentSchedule = paymentSchedule;
   if (body.kickoffDate !== undefined) out.kickoffDate = kickoffDate;
   if (revisionLimit !== undefined) out.revisionLimit = revisionLimit;
@@ -192,12 +279,22 @@ async function sendProposalShare(proposalId, { to, cc, subject, message } = {}) 
   if (!proposal) {
     throw createHttpError(404, 'Proposal not found.', 'NOT_FOUND');
   }
+  if (proposal.status === 'accepted') {
+    throw createHttpError(
+      400,
+      'Accepted proposals are locked and cannot be resent.',
+      'PROPOSAL_LOCKED'
+    );
+  }
   if (!proposal.client?.email) {
     throw createHttpError(400, 'Client email is required to send a proposal.', 'CLIENT_EMAIL_REQUIRED');
   }
   if (!config.publicAppUrl) {
     throw createHttpError(500, 'PUBLIC_APP_URL is not configured.', 'CONFIG_ERROR');
   }
+
+  const contentChanged = proposalContentChangedSinceLastSend(proposal);
+  const isRevisedSend = Boolean(proposal.last_sent_content_hash) && contentChanged;
 
   const errors = {};
   const recipient = normalizeEmail(to) || normalizeEmail(proposal.client.email);
@@ -211,15 +308,17 @@ async function sendProposalShare(proposalId, { to, cc, subject, message } = {}) 
     errors.cc = 'Enter valid CC emails, separated by commas.';
   }
 
+  const who = engagementBusinessName(proposal) || 'your project';
   let finalSubject = enforceMaxLength(trimToNull(subject), LIMITS.proposalEmailSubject);
   if (!finalSubject) {
-    const who = proposal.client.business_name || proposal.client.name || 'your project';
-    finalSubject = `Website proposal for ${who}`;
+    finalSubject = isRevisedSend
+      ? `Updated website proposal for ${who}`
+      : `Website proposal for ${who}`;
   }
 
   let finalMessage = enforceMaxLength(trimToNull(message), LIMITS.proposalEmailMessage);
   if (!finalMessage) {
-    finalMessage = DEFAULT_SHARE_MESSAGE;
+    finalMessage = isRevisedSend ? DEFAULT_REVISED_MESSAGE : DEFAULT_SHARE_MESSAGE;
   }
 
   if (Object.keys(errors).length) {
@@ -228,9 +327,10 @@ async function sendProposalShare(proposalId, { to, cc, subject, message } = {}) 
 
   const prepared = prepareProposalShareToken();
   const viewUrl = `${config.publicAppUrl}/p/${prepared.rawToken}`;
+  const sendEmail = isRevisedSend ? sendProposalRevisedEmail : sendProposalShareEmail;
 
   try {
-    await sendProposalShareEmail({
+    await sendEmail({
       to: [recipient],
       cc: ccList,
       subject: finalSubject,
@@ -251,6 +351,7 @@ async function sendProposalShare(proposalId, { to, cc, subject, message } = {}) 
   return {
     proposal: updated,
     share: { expiresAt: toIsoUtc(prepared.expiresAt) },
+    revised: isRevisedSend,
   };
 }
 
@@ -271,7 +372,7 @@ function mapSharePayload(proposal, share, revisions = []) {
     expiresAt: toIsoUtc(share.expires_at),
     client: {
       name: client.name || null,
-      businessName: client.business_name || null,
+      businessName: inquiry.business_name || client.business_name || null,
       email: client.email || null,
     },
     inquiry: {
@@ -300,6 +401,10 @@ function mapSharePayload(proposal, share, revisions = []) {
       status,
       statusLabel: PROPOSAL_STATUS_LABELS[status] || status,
       clientStatusLabel: CLIENT_PROPOSAL_STATUS_LABELS[status] || null,
+      packageSlug: proposal.package_slug || null,
+      packageLabel: proposal.package_slug
+        ? PACKAGE_LABELS[proposal.package_slug] || proposal.package_slug
+        : null,
       summary: proposal.summary || null,
       scope: proposal.scope || null,
       deliverables: proposal.deliverables || null,
@@ -458,10 +563,13 @@ module.exports = {
   parseRevisionLimit,
   parseProposalBody,
   parseEmailList,
+  updateAdminProposal,
+  beginAdminRevision,
   sendProposalShare,
   mapSharePayload,
   getShareByToken,
   acceptShare,
   reviseShare,
   declineShare,
+  engagementBusinessName,
 };

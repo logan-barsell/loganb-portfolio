@@ -29,13 +29,16 @@ const {
 } = require('../db');
 const {
   listInvoicesForProject,
-  markProjectStartedByAdmin,
-  setProjectReadyForLaunch,
-  maybeActivateProject,
   activationBlockReason,
 } = require('../services/billing/invoices');
 const { runActivationTickIfNeeded } = require('../services/billing/activationTick');
 const { resendPortalAccess } = require('../services/portal');
+const {
+  startProjectByAdmin,
+  completeProject,
+  setReadyForLaunch,
+  maybeActivateAndNotify,
+} = require('../services/projects');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { setNoStore, requireSameOrigin } = require('../services/auth/cookies');
 const { createHttpError, trimToNull, enforceMaxLength } = require('../utils/normalize');
@@ -58,17 +61,18 @@ function mapProjectListRow(row) {
     inquiryId: row.inquiry_id,
     clientId: row.client_id,
     clientName: row.client_name,
-    clientBusinessName: row.client_business_name,
+    clientBusinessName: row.inquiry_business_name || row.client_business_name,
     clientEmail: row.client_email,
     inquiryStage: row.inquiry_stage || null,
     inquiryStageLabel: row.inquiry_stage
       ? INQUIRY_STAGE_LABELS[row.inquiry_stage] || row.inquiry_stage
       : null,
     inquiryType: row.inquiry_type || null,
-    packageSlug: row.inquiry_package_slug || null,
-    packageLabel: row.inquiry_package_slug
-      ? PACKAGE_LABELS[row.inquiry_package_slug] || row.inquiry_package_slug
-      : null,
+    packageSlug: row.proposal_package_slug || row.inquiry_package_slug || null,
+    packageLabel: (() => {
+      const slug = row.proposal_package_slug || row.inquiry_package_slug;
+      return slug ? PACKAGE_LABELS[slug] || slug : null;
+    })(),
     createdAt: toIsoUtc(row.created_at),
     updatedAt: toIsoUtc(row.updated_at),
   };
@@ -136,7 +140,7 @@ function mapProjectDetail(row) {
     client: {
       id: row.client_id,
       name: row.client_name,
-      businessName: row.client_business_name,
+      businessName: row.inquiry_business_name || row.client_business_name,
       email: row.client_email,
       phone: row.client_phone || null,
     },
@@ -192,6 +196,10 @@ function mapProjectDetail(row) {
           kickoffDate: row.proposal_kickoff_date || null,
           revisionLimit: row.proposal_revision_limit ?? null,
           revisionLimitLabel: formatRevisionLimitLabel(row.proposal_revision_limit),
+          packageSlug: row.proposal_package_slug || null,
+          packageLabel: row.proposal_package_slug
+            ? PACKAGE_LABELS[row.proposal_package_slug] || row.proposal_package_slug
+            : null,
           declineReason: row.proposal_decline_reason || null,
           hostingPlan,
           hostingPlanLabel: resolveHostingPlan(hostingPlan).label,
@@ -201,7 +209,10 @@ function mapProjectDetail(row) {
           hostingMonthlyLabel: formatMoney(row.hosting_monthly_cents, row.proposal_currency),
           currency: row.proposal_currency || 'usd',
           sentAt: toIsoUtc(row.proposal_sent_at),
+          acceptedAt: toIsoUtc(row.proposal_accepted_at),
+          declinedAt: toIsoUtc(row.proposal_declined_at),
           createdAt: toIsoUtc(row.proposal_created_at),
+          updatedAt: toIsoUtc(row.proposal_updated_at),
         }
       : null,
     portal: {
@@ -245,10 +256,10 @@ router.get('/', (req, res, next) => {
   }
 });
 
-router.get('/:id', (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     runActivationTickIfNeeded();
-    maybeActivateProject(req.params.id);
+    await maybeActivateAndNotify(req.params.id);
     const row = getAdminProjectById(req.params.id);
     if (!row) {
       throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
@@ -305,14 +316,34 @@ router.post(
   '/:id/mark-started',
   requireSameOrigin,
   express.json({ limit: '8kb' }),
-  (req, res, next) => {
+  async (req, res, next) => {
     try {
       const existing = getAdminProjectById(req.params.id);
       if (!existing) {
         throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
       }
 
-      markProjectStartedByAdmin(req.params.id);
+      await startProjectByAdmin(req.params.id);
+      const refreshed = getAdminProjectById(req.params.id);
+      return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/mark-completed',
+  requireSameOrigin,
+  express.json({ limit: '8kb' }),
+  async (req, res, next) => {
+    try {
+      const existing = getAdminProjectById(req.params.id);
+      if (!existing) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      await completeProject(req.params.id);
       const refreshed = getAdminProjectById(req.params.id);
       return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
     } catch (error) {
@@ -325,7 +356,7 @@ router.post(
   '/:id/ready-for-launch',
   requireSameOrigin,
   express.json({ limit: '8kb' }),
-  (req, res, next) => {
+  async (req, res, next) => {
     try {
       const existing = getAdminProjectById(req.params.id);
       if (!existing) {
@@ -337,7 +368,7 @@ router.post(
         throw createHttpError(400, 'ready must be a boolean.', 'VALIDATION_ERROR');
       }
 
-      setProjectReadyForLaunch(req.params.id, ready);
+      await setReadyForLaunch(req.params.id, ready);
       const refreshed = getAdminProjectById(req.params.id);
       return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
     } catch (error) {

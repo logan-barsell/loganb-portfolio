@@ -40,23 +40,48 @@ function mapListRow(row) {
 }
 
 function mapInquiryDetail(row) {
-  const proposals = listProposalsByInquiryId(row.id).map((p) => ({
-    id: p.id,
-    status: p.status,
-    statusLabel: PROPOSAL_STATUS_LABELS[p.status] || p.status,
-    designAmountCents: p.design_amount_cents,
-    currency: p.currency,
-    sentAt: toIsoUtc(p.sent_at),
-    createdAt: toIsoUtc(p.created_at),
-  }));
+  const proposals = listProposalsByInquiryId(row.id).map((p) => {
+    const packageSlug = p.package_slug || null;
+    const projectStatus = p.project_status || null;
+    return {
+      id: p.id,
+      status: p.status,
+      statusLabel: PROPOSAL_STATUS_LABELS[p.status] || p.status,
+      designAmountCents: p.design_amount_cents,
+      currency: p.currency,
+      packageSlug,
+      packageLabel: packageSlug ? PACKAGE_LABELS[packageSlug] || packageSlug : null,
+      kickoffDate: p.kickoff_date || null,
+      projectStatus,
+      projectStatusLabel: projectStatus
+        ? PROJECT_STATUS_LABELS[projectStatus] || projectStatus
+        : null,
+      sentAt: toIsoUtc(p.sent_at),
+      acceptedAt: toIsoUtc(p.accepted_at),
+      declinedAt: toIsoUtc(p.declined_at),
+      createdAt: toIsoUtc(p.created_at),
+      updatedAt: toIsoUtc(p.updated_at),
+      clientName: row.name || null,
+      businessName: row.business_name || null,
+    };
+  });
 
   const projectRow = getProjectForInquiry(row.id);
+  const projectPackageSlug = projectRow?.proposal_package_slug || null;
   const project = projectRow
     ? {
         id: projectRow.id,
         status: projectRow.status,
         statusLabel: PROJECT_STATUS_LABELS[projectRow.status] || projectRow.status,
         name: projectRow.name || null,
+        clientName: projectRow.client_name || null,
+        clientBusinessName:
+          projectRow.inquiry_business_name || projectRow.client_business_name || null,
+        packageSlug: projectPackageSlug,
+        packageLabel: projectPackageSlug
+          ? PACKAGE_LABELS[projectPackageSlug] || projectPackageSlug
+          : null,
+        kickoffDate: projectRow.proposal_kickoff_date || null,
         createdAt: toIsoUtc(projectRow.created_at),
       }
     : null;
@@ -87,6 +112,7 @@ function mapInquiryDetail(row) {
     notificationError: row.notification_error,
     createdAt: toIsoUtc(row.created_at),
     clientId: row.client_id || null,
+    clientName: row.name || null,
     proposals,
     project,
     attachments: (row.attachments || []).map(mapAttachmentMeta),

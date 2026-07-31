@@ -16,6 +16,17 @@ const {
 } = require('../helpers');
 const { sendResendEmail } = require('../send');
 
+function formatKickoffForEmail(ymd) {
+  if (!ymd) return null;
+  try {
+    return new Intl.DateTimeFormat('en-US', { dateStyle: 'long', timeZone: 'UTC' }).format(
+      new Date(`${ymd}T00:00:00Z`)
+    );
+  } catch {
+    return ymd;
+  }
+}
+
 /**
  * @param {object} proposal
  * @param {{ portalSetup?: { rawToken: string, expiresAt: string } | null, projectId?: string | null }} [options]
@@ -34,19 +45,26 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
     portalSetup && projectId ? portalSetupUrl(projectId, portalSetup.rawToken) : null;
   const expiryNote = portalSetup ? formatSetupExpiryNote(portalSetup.expiresAt) : null;
 
-  const clientSubject = `You're approved — next steps for ${businessName}`;
+  const kickoffLabel = formatKickoffForEmail(proposal.kickoff_date);
+  const timelineSummary = String(proposal.timeline_summary || '').trim() || null;
+
+  const scheduleLines = [];
+  if (kickoffLabel) scheduleLines.push(`Target kickoff: ${kickoffLabel}`);
+  if (timelineSummary) scheduleLines.push(`Timeline: ${timelineSummary}`);
+
+  const clientSubject = `Proposal confirmed — next steps for ${businessName}`;
   const nextSteps = setupUrl
     ? [
         'What happens next:',
         '1. Open your project portal link below and choose a password (one-time setup).',
         '2. Use the portal to review project details and share files.',
-        '3. I will follow up on kickoff, content, and payment steps.',
+        '3. I will follow up on content, payment, and kickoff timing.',
       ]
     : [
         'What happens next:',
-        '1. I will follow up shortly to confirm kickoff details and timeline.',
+        '1. I will follow up shortly to confirm kickoff details and next steps.',
         '2. We will align on content, branding, and any materials needed from you.',
-        '3. Once we are ready to start, I will share payment / onboarding steps.',
+        '3. Once kickoff is set, the project will move from on hold to started.',
       ];
 
   const portalTextBlock = setupUrl
@@ -59,10 +77,17 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
       ]
     : [];
 
+  const scheduleTextBlock = scheduleLines.length
+    ? ['', 'Schedule:', ...scheduleLines]
+    : [];
+
   const clientText = [
     `Hi ${first},`,
     '',
     `Thank you for accepting the proposal for ${businessName}. I'm excited to work with you.`,
+    '',
+    'Your project is set up and currently on hold until kickoff. Work begins after the project is officially started.',
+    ...scheduleTextBlock,
     '',
     ...nextSteps,
     ...portalTextBlock,
@@ -82,6 +107,20 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
     `
     : '';
 
+  const scheduleHtmlRows = [
+    kickoffLabel ? htmlRow('Target kickoff', kickoffLabel) : '',
+    timelineSummary ? htmlRow('Timeline', timelineSummary) : '',
+  ].join('');
+
+  const scheduleHtmlBlock = scheduleHtmlRows
+    ? `
+      <p style="margin:16px 0 8px;color:${BRAND.bodyText};"><strong>Schedule</strong></p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+        ${scheduleHtmlRows}
+      </table>
+    `
+    : '';
+
   const clientHtml = wrapEmailHtml({
     preheader: clientSubject,
     bodyHtml: `
@@ -91,16 +130,20 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
           businessName
         )}</strong>. I'm excited to work with you.`,
       })}
+      ${p(
+        'Your project is set up and currently on hold until kickoff. Work begins after the project is officially started.'
+      )}
+      ${scheduleHtmlBlock}
       <p style="margin:0 0 8px;color:${BRAND.bodyText};"><strong>What happens next:</strong></p>
       <ol style="margin:0 0 16px;padding-left:20px;color:${BRAND.bodyText};">
         ${
           setupUrl
             ? `<li>Open your project portal link below and choose a password (one-time setup).</li>
         <li>Use the portal to review project details and share files.</li>
-        <li>I will follow up on kickoff, content, and payment steps.</li>`
-            : `<li>I will follow up shortly to confirm kickoff details and timeline.</li>
+        <li>I will follow up on content, payment, and kickoff timing.</li>`
+            : `<li>I will follow up shortly to confirm kickoff details and next steps.</li>
         <li>We will align on content, branding, and any materials needed from you.</li>
-        <li>Once we are ready to start, I will share payment / onboarding steps.</li>`
+        <li>Once kickoff is set, the project will move from on hold to started.</li>`
         }
       </ol>
       ${portalHtmlBlock}
@@ -116,20 +159,22 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
     `Proposal ID: ${proposal.id}`,
     `Inquiry ID: ${proposal.inquiry_id}`,
     projectId ? `Project ID: ${projectId}` : null,
+    kickoffLabel ? `Target kickoff: ${kickoffLabel}` : null,
+    timelineSummary ? `Timeline: ${timelineSummary}` : null,
     '',
     setupUrl
-      ? 'A project record was created/activated and a portal setup invite was emailed to the client.'
-      : 'A project record was created/activated. Follow up on kickoff next.',
+      ? 'A project was created on hold and a portal setup invite was emailed to the client.'
+      : 'A project was created on hold. Follow up on kickoff next.',
   ]
     .filter((part) => part !== null)
     .join('\n');
 
   const adminNote = setupUrl
     ? p(
-        'A project record was created/activated and a portal setup invite was emailed to the client.',
+        'A project was created on hold and a portal setup invite was emailed to the client.',
         { muted: true }
       )
-    : p('A project record was created/activated. Follow up on kickoff next.', { muted: true });
+    : p('A project was created on hold. Follow up on kickoff next.', { muted: true });
 
   const adminHtml = adminNoticeHtml(
     adminSubject,
@@ -140,6 +185,8 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
       htmlRow('Proposal ID', proposal.id),
       htmlRow('Inquiry ID', proposal.inquiry_id),
       htmlRow('Project ID', projectId),
+      htmlRow('Target kickoff', kickoffLabel),
+      htmlRow('Timeline', timelineSummary),
     ].join(''),
     adminNote
   );

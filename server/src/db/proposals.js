@@ -1,4 +1,4 @@
-const { randomUUID } = require('crypto');
+const { randomUUID, createHash } = require('crypto');
 const { getDb } = require('./client');
 const { createHttpError } = require('../utils/normalize');
 const { escapeLike } = require('./helpers');
@@ -12,17 +12,41 @@ const PROPOSAL_SORT_COLUMNS = {
   design_amount_cents: 'p.design_amount_cents',
 };
 
+/** Stable fingerprint of commercial fields used for revise-vs-resend email choice. */
+function hashProposalContent(row) {
+  const payload = [
+    row.package_slug ?? null,
+    row.summary ?? null,
+    row.scope ?? null,
+    row.deliverables ?? null,
+    row.exclusions ?? null,
+    row.timeline_summary ?? null,
+    row.payment_schedule ?? null,
+    row.kickoff_date ?? null,
+    row.revision_limit ?? null,
+    row.design_amount_cents ?? null,
+    row.hosting_monthly_cents ?? null,
+    row.hosting_plan ?? null,
+  ];
+  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
+function proposalContentChangedSinceLastSend(row) {
+  if (!row?.last_sent_content_hash) return false;
+  return hashProposalContent(row) !== row.last_sent_content_hash;
+}
+
 function createProposal(payload, database = getDb()) {
   const id = payload.id || randomUUID();
   database
     .prepare(
       `INSERT INTO proposals (
-         id, client_id, inquiry_id, status,
+         id, client_id, inquiry_id, status, package_slug,
          summary, scope, deliverables, exclusions, timeline_summary,
          payment_schedule, kickoff_date, revision_limit,
          design_amount_cents, hosting_monthly_cents, hosting_plan, currency
        ) VALUES (
-         @id, @client_id, @inquiry_id, @status,
+         @id, @client_id, @inquiry_id, @status, @package_slug,
          @summary, @scope, @deliverables, @exclusions, @timeline_summary,
          @payment_schedule, @kickoff_date, @revision_limit,
          @design_amount_cents, @hosting_monthly_cents, @hosting_plan, @currency
@@ -33,6 +57,7 @@ function createProposal(payload, database = getDb()) {
       client_id: payload.clientId,
       inquiry_id: payload.inquiryId,
       status: payload.status || 'draft',
+      package_slug: payload.packageSlug ?? null,
       summary: payload.summary ?? null,
       scope: payload.scope ?? null,
       deliverables: payload.deliverables ?? null,
@@ -55,6 +80,7 @@ function updateProposal(id, patch, database = getDb()) {
   if (!existing) return null;
 
   const next = {
+    package_slug: patch.packageSlug !== undefined ? patch.packageSlug : existing.package_slug,
     summary: patch.summary !== undefined ? patch.summary : existing.summary,
     scope: patch.scope !== undefined ? patch.scope : existing.scope,
     deliverables: patch.deliverables !== undefined ? patch.deliverables : existing.deliverables,
@@ -77,18 +103,31 @@ function updateProposal(id, patch, database = getDb()) {
     hosting_plan: patch.hostingPlan !== undefined ? patch.hostingPlan : existing.hosting_plan,
     status: patch.status !== undefined ? patch.status : existing.status,
     sent_at: existing.sent_at,
+    decline_reason: existing.decline_reason,
+    last_sent_content_hash: existing.last_sent_content_hash,
+    accepted_at: existing.accepted_at,
+    declined_at: existing.declined_at,
   };
 
   if (patch.status === 'sent' && existing.status !== 'sent') {
     next.sent_at = new Date().toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
   }
-  if (patch.status === 'draft' && existing.status === 'sent') {
+  if (patch.status === 'draft' && existing.status !== 'draft') {
     next.sent_at = null;
+    next.accepted_at = null;
+    next.declined_at = null;
+  }
+  if (patch.clearDeclineReason) {
+    next.decline_reason = null;
+  }
+  if (patch.lastSentContentHash !== undefined) {
+    next.last_sent_content_hash = patch.lastSentContentHash;
   }
 
   database
     .prepare(
       `UPDATE proposals SET
+         package_slug = @package_slug,
          summary = @summary,
          scope = @scope,
          deliverables = @deliverables,
@@ -102,6 +141,10 @@ function updateProposal(id, patch, database = getDb()) {
          hosting_plan = @hosting_plan,
          status = @status,
          sent_at = @sent_at,
+         decline_reason = @decline_reason,
+         last_sent_content_hash = @last_sent_content_hash,
+         accepted_at = @accepted_at,
+         declined_at = @declined_at,
          updated_at = datetime('now')
        WHERE id = @id`
     )
@@ -135,29 +178,85 @@ function getProposalById(id, database = getDb()) {
   return { ...proposal, client, inquiry };
 }
 
-/** Always set status=sent and refresh sent_at (used by send/resend). */
+/** Always set status=sent, refresh sent_at, and store content fingerprint (used by send/resend). */
 function markProposalSent(id, database = getDb()) {
   const existing = database.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
   if (!existing) return null;
 
   const sentAt = new Date().toISOString().replace(/\.\d{3}Z$/, '').replace('T', ' ');
+  const contentHash = hashProposalContent(existing);
   database
     .prepare(
-      `UPDATE proposals SET status = 'sent', sent_at = ?, updated_at = datetime('now') WHERE id = ?`
+      `UPDATE proposals
+       SET status = 'sent',
+           sent_at = ?,
+           decline_reason = NULL,
+           last_sent_content_hash = ?,
+           updated_at = datetime('now')
+       WHERE id = ?`
     )
-    .run(sentAt, id);
+    .run(sentAt, contentHash, id);
 
   syncInquiryPipeline(existing.inquiry_id, database);
   return getProposalById(id, database);
 }
 
+/**
+ * Unlock a live proposal for editing: draft status, clear sent_at, invalidate shares.
+ * Allowed from sent or revision_requested.
+ */
+function beginProposalRevision(id, database = getDb()) {
+  const existing = database.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
+  if (!existing) return null;
+
+  if (existing.status !== 'sent' && existing.status !== 'revision_requested') {
+    throw createHttpError(
+      400,
+      'Only sent or revision-requested proposals can enter revise mode.',
+      'INVALID_STATUS'
+    );
+  }
+
+  const run = database.transaction(() => {
+    const { deleteSharesForProposal } = require('./proposalShares');
+    deleteSharesForProposal(id, database);
+
+    // Backfill fingerprint for proposals sent before content hashing existed.
+    let contentHash = existing.last_sent_content_hash;
+    if (!contentHash) {
+      contentHash = hashProposalContent(existing);
+    }
+
+    database
+      .prepare(
+        `UPDATE proposals
+         SET status = 'draft',
+             sent_at = NULL,
+             accepted_at = NULL,
+             declined_at = NULL,
+             last_sent_content_hash = ?,
+             updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(contentHash, id);
+    syncInquiryPipeline(existing.inquiry_id, database);
+    return getProposalById(id, database);
+  });
+
+  return run();
+}
+
 function listProposalsByInquiryId(inquiryId, database = getDb()) {
   return database
     .prepare(
-      `SELECT id, status, design_amount_cents, currency, sent_at, created_at
-       FROM proposals
-       WHERE inquiry_id = ?
-       ORDER BY created_at DESC, id DESC`
+      `SELECT
+         p.id, p.status, p.design_amount_cents, p.currency, p.package_slug,
+         p.kickoff_date, p.sent_at, p.accepted_at, p.declined_at, p.created_at, p.updated_at,
+         proj.status AS project_status
+       FROM proposals p
+       LEFT JOIN projects proj ON proj.proposal_id = p.id
+       WHERE p.inquiry_id = ?
+       ORDER BY p.created_at DESC, p.id DESC`
     )
     .all(inquiryId);
 }
@@ -177,7 +276,7 @@ function listAdminProposals({
   const q = String(search || '').trim();
   if (q) {
     where.push(
-      `(c.name LIKE @search ESCAPE '\\' OR c.business_name LIKE @search ESCAPE '\\' OR c.email LIKE @search ESCAPE '\\')`
+      `(c.name LIKE @search ESCAPE '\\' OR c.business_name LIKE @search ESCAPE '\\' OR IFNULL(i.business_name, '') LIKE @search ESCAPE '\\' OR c.email LIKE @search ESCAPE '\\')`
     );
     params.search = `%${escapeLike(q)}%`;
   }
@@ -205,6 +304,7 @@ function listAdminProposals({
       `SELECT COUNT(*) AS count
        FROM proposals p
        INNER JOIN clients c ON c.id = p.client_id
+       INNER JOIN inquiries i ON i.id = p.inquiry_id
        ${whereSql}`
     )
     .get(params).count;
@@ -214,10 +314,12 @@ function listAdminProposals({
       `SELECT
          p.id, p.status, p.design_amount_cents, p.hosting_monthly_cents,
          p.currency, p.sent_at, p.created_at, p.updated_at, p.inquiry_id, p.client_id,
+         p.package_slug AS proposal_package_slug,
          c.name AS client_name, c.business_name AS client_business_name, c.email AS client_email,
          i.stage AS inquiry_stage,
          i.type AS inquiry_type,
-         i.package_slug AS inquiry_package_slug
+         i.package_slug AS inquiry_package_slug,
+         i.business_name AS inquiry_business_name
        FROM proposals p
        INNER JOIN clients c ON c.id = p.client_id
        INNER JOIN inquiries i ON i.id = p.inquiry_id
@@ -249,10 +351,10 @@ function listRevisionRequestsForProposal(proposalId, database = getDb()) {
 
 function projectNameFromProposal(proposal) {
   const business =
-    proposal.client?.business_name ||
     proposal.inquiry?.business_name ||
-    proposal.client?.name ||
-    proposal.inquiry?.name;
+    proposal.client?.business_name ||
+    proposal.inquiry?.name ||
+    proposal.client?.name;
   return business ? `${business} Website` : 'Website Project';
 }
 
@@ -265,6 +367,9 @@ function acceptProposal(proposalId, database = getDb()) {
   if (!existing) return null;
   if (existing.status === 'draft') {
     throw createHttpError(400, 'This proposal has not been sent yet.', 'INVALID_STATUS');
+  }
+  if (existing.status === 'declined') {
+    throw createHttpError(400, 'This proposal was declined.', 'INVALID_STATUS');
   }
   if (existing.status === 'accepted') {
     return { proposal: existing, project: getProjectByProposalId(proposalId, database), already: true };
@@ -280,7 +385,11 @@ function acceptProposal(proposalId, database = getDb()) {
     database
       .prepare(
         `UPDATE proposals
-         SET status = 'accepted', decline_reason = NULL, updated_at = datetime('now')
+         SET status = 'accepted',
+             decline_reason = NULL,
+             accepted_at = datetime('now'),
+             declined_at = NULL,
+             updated_at = datetime('now')
          WHERE id = ?`
       )
       .run(proposalId);
@@ -380,7 +489,11 @@ function declineProposal(proposalId, reason = null, database = getDb()) {
     database
       .prepare(
         `UPDATE proposals
-         SET status = 'declined', decline_reason = ?, updated_at = datetime('now')
+         SET status = 'declined',
+             decline_reason = ?,
+             declined_at = datetime('now'),
+             accepted_at = NULL,
+             updated_at = datetime('now')
          WHERE id = ?`
       )
       .run(reason || null, proposalId);
@@ -413,6 +526,12 @@ function requestProposalRevision(proposalId, message, database = getDb()) {
   if (!existing) return null;
   if (existing.status === 'draft') {
     throw createHttpError(400, 'This proposal has not been sent yet.', 'INVALID_STATUS');
+  }
+  if (existing.status === 'accepted') {
+    throw createHttpError(400, 'This proposal has already been accepted.', 'INVALID_STATUS');
+  }
+  if (existing.status === 'declined') {
+    throw createHttpError(400, 'This proposal was declined.', 'INVALID_STATUS');
   }
 
   const trimmed = String(message || '').trim();
@@ -458,6 +577,9 @@ module.exports = {
   updateProposal,
   getProposalById,
   markProposalSent,
+  beginProposalRevision,
+  hashProposalContent,
+  proposalContentChangedSinceLastSend,
   listProposalsByInquiryId,
   listAdminProposals,
   listRevisionRequestsForProposal,

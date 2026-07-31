@@ -12,8 +12,8 @@ const {
   getAdminAttachment,
   updateProjectDomain,
 } = require('../db');
-const { maybeActivateProject } = require('../services/billing/invoices');
 const { runActivationTickIfNeeded } = require('../services/billing/activationTick');
+const { maybeActivateAndNotify } = require('../services/projects');
 const {
   mapPortalOverview,
   displayNameForProject,
@@ -156,10 +156,10 @@ router.get('/:id/session', (req, res, next) => {
   }
 });
 
-router.get('/:id', requireClientProject, (req, res, next) => {
+router.get('/:id', requireClientProject, async (req, res, next) => {
   try {
     runActivationTickIfNeeded();
-    maybeActivateProject(req.params.id);
+    await maybeActivateAndNotify(req.params.id);
     const bundle = getPortalProjectBundle(req.params.id);
     if (!bundle) {
       throw createHttpError(404, 'Project not found.', 'NOT_FOUND');

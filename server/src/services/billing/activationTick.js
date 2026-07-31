@@ -1,5 +1,6 @@
 const { getDb } = require('../../db');
 const { maybeActivateProject } = require('./invoices');
+const { notifyIfAutoActivated } = require('../projects');
 
 let lastTickUtcDay = null;
 
@@ -23,7 +24,10 @@ function runActivationTickIfNeeded(database = getDb()) {
 
   for (const row of rows) {
     try {
-      maybeActivateProject(row.id, database);
+      const result = maybeActivateProject(row.id, database);
+      notifyIfAutoActivated(result).catch((err) => {
+        console.error('Activation email failed for project', row.id, err);
+      });
     } catch (err) {
       console.error('Activation tick failed for project', row.id, err);
     }

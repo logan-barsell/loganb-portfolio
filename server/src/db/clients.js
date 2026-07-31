@@ -193,20 +193,36 @@ function getAdminClientById(id) {
 
   const proposals = database
     .prepare(
-      `SELECT id, inquiry_id, status, design_amount_cents, hosting_monthly_cents,
-              currency, sent_at, created_at, updated_at
-       FROM proposals
-       WHERE client_id = ?
-       ORDER BY created_at DESC, id DESC`
+      `SELECT
+         p.id, p.inquiry_id, p.status, p.design_amount_cents, p.hosting_monthly_cents,
+         p.currency, p.package_slug, p.sent_at, p.accepted_at, p.declined_at,
+         p.created_at, p.updated_at,
+         i.business_name AS inquiry_business_name,
+         i.name AS inquiry_name,
+         proj.status AS project_status
+       FROM proposals p
+       LEFT JOIN inquiries i ON i.id = p.inquiry_id
+       LEFT JOIN projects proj ON proj.proposal_id = p.id
+       WHERE p.client_id = ?
+       ORDER BY p.created_at DESC, p.id DESC`
     )
     .all(id);
 
   const projects = database
     .prepare(
-      `SELECT id, name, status, proposal_id, inquiry_id, created_at, updated_at
-       FROM projects
-       WHERE client_id = ?
-       ORDER BY created_at DESC, id DESC`
+      `SELECT
+         p.id, p.name, p.status, p.proposal_id, p.inquiry_id, p.created_at, p.updated_at,
+         pr.package_slug AS proposal_package_slug,
+         pr.kickoff_date AS proposal_kickoff_date,
+         i.business_name AS inquiry_business_name,
+         c.name AS client_name,
+         c.business_name AS client_business_name
+       FROM projects p
+       LEFT JOIN proposals pr ON pr.id = p.proposal_id
+       LEFT JOIN inquiries i ON i.id = p.inquiry_id
+       LEFT JOIN clients c ON c.id = p.client_id
+       WHERE p.client_id = ?
+       ORDER BY p.created_at DESC, p.id DESC`
     )
     .all(id);
 

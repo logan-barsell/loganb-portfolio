@@ -14,6 +14,7 @@ const {
   syncProjectFromStripeSubscription,
 } = require('./billing/subscriptionSync');
 const { getDb } = require('../db');
+const { notifyIfAutoActivated } = require('./projects');
 
 async function retrieveSubscription(stripe, subscriptionRef) {
   if (!subscriptionRef) return null;
@@ -113,7 +114,8 @@ async function handleCheckoutSessionCompleted(event, stripe, database) {
   const pid = projectId || invoice?.project_id;
   if (pid) {
     recomputeProjectBillingStatus(pid, database, { preserveHostingStatus: true });
-    maybeActivateProject(pid, database);
+    const activation = maybeActivateProject(pid, database);
+    await notifyIfAutoActivated(activation);
   }
 }
 

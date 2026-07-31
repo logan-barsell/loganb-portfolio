@@ -106,7 +106,7 @@ function mapPortalOverview(bundle) {
     client: client
       ? {
           name: client.name || null,
-          businessName: client.business_name || null,
+          businessName: inquiry?.business_name || client.business_name || null,
           email: client.email || null,
           phone: client.phone || null,
         }
@@ -145,6 +145,10 @@ function mapPortalOverview(bundle) {
           status: proposal.status || null,
           statusLabel: proposal.status
             ? PROPOSAL_STATUS_LABELS[proposal.status] || proposal.status
+            : null,
+          packageSlug: proposal.package_slug || null,
+          packageLabel: proposal.package_slug
+            ? PACKAGE_LABELS[proposal.package_slug] || proposal.package_slug
             : null,
           summary: proposal.summary || null,
           scope: proposal.scope || null,
@@ -187,10 +191,10 @@ function displayNameForProject(projectId) {
   const bundle = getPortalProjectBundle(projectId);
   if (!bundle) return null;
   return (
-    bundle.client?.business_name ||
     bundle.inquiry?.business_name ||
-    bundle.client?.name ||
+    bundle.client?.business_name ||
     bundle.inquiry?.name ||
+    bundle.client?.name ||
     'your project'
   );
 }
@@ -375,7 +379,7 @@ async function resendPortalAccess(projectId) {
   await sendPortalAccessEmail(
     {
       name: row.client_name,
-      businessName: row.client_business_name,
+      businessName: row.inquiry_business_name || row.client_business_name,
       email: clientEmail,
     },
     {

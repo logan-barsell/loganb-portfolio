@@ -16,7 +16,7 @@ function decisionContext(proposal) {
   const inquiry = proposal.inquiry || {};
   const clientName = client.name || inquiry.name || 'there';
   const businessName =
-    client.business_name || inquiry.business_name || client.name || inquiry.name || 'your project';
+    inquiry.business_name || client.business_name || inquiry.name || client.name || 'your project';
   const clientEmail = client.email || inquiry.email;
   return { clientName, businessName, clientEmail, first: firstName(clientName) || 'there' };
 }
@@ -24,6 +24,33 @@ function decisionContext(proposal) {
 function portalSetupUrl(projectId, rawToken) {
   if (!config.publicAppUrl || !projectId || !rawToken) return null;
   return `${config.publicAppUrl}/project/${projectId}/setup/${rawToken}`;
+}
+
+function portalProjectUrl(projectId) {
+  if (!config.publicAppUrl || !projectId) return null;
+  return `${config.publicAppUrl}/project/${projectId}`;
+}
+
+function projectEmailContext({ project, client, inquiry } = {}) {
+  const clientRow = client || {};
+  const inquiryRow = inquiry || {};
+  const clientName = clientRow.name || inquiryRow.name || 'there';
+  const businessName =
+    inquiryRow.business_name ||
+    clientRow.business_name ||
+    project?.name ||
+    inquiryRow.name ||
+    clientRow.name ||
+    'your project';
+  const clientEmail = clientRow.email || inquiryRow.email;
+  return {
+    clientName,
+    businessName,
+    clientEmail,
+    first: firstName(clientName) || 'there',
+    projectId: project?.id || null,
+    portalUrl: portalProjectUrl(project?.id),
+  };
 }
 
 function formatSetupExpiryNote(expiresAt) {
@@ -49,5 +76,7 @@ module.exports = {
   line,
   decisionContext,
   portalSetupUrl,
+  portalProjectUrl,
+  projectEmailContext,
   formatSetupExpiryNote,
 };

@@ -91,7 +91,7 @@ const PROPOSAL_STATUSES = ['draft', 'sent', 'revision_requested', 'accepted', 'd
 const PROPOSAL_STATUS_LABELS = {
   draft: 'Draft',
   sent: 'Sent',
-  revision_requested: 'Revision Pending',
+  revision_requested: 'Revision Requested',
   accepted: 'Accepted',
   declined: 'Declined',
 };
@@ -137,7 +137,7 @@ function formatRevisionLimitLabel(limit) {
 /** Client-facing decision labels on the share page. */
 const CLIENT_PROPOSAL_STATUS_LABELS = {
   sent: null,
-  revision_requested: 'Revision Pending',
+  revision_requested: 'Revision Requested',
   accepted: 'Approved',
   declined: 'Declined',
 };
@@ -153,10 +153,10 @@ const PROPOSAL_STATUS_TO_PIPELINE = {
 const PROJECT_STATUSES = ['active', 'on_hold', 'completed', 'cancelled'];
 
 const PROJECT_STATUS_LABELS = {
-  active: 'Active',
-  on_hold: 'On Hold',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
+  active: 'Active Project',
+  on_hold: 'On Hold Project',
+  completed: 'Completed Project',
+  cancelled: 'Cancelled Project',
 };
 
 const PROJECT_STATUS_TO_PIPELINE = {
