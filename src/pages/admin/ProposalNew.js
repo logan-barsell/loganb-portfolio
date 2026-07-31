@@ -21,22 +21,25 @@ import {
 } from '../../data/intakeOptions';
 import { DEFAULT_PAYMENT_SCHEDULE } from '../../data/paymentSchedules';
 import { DEFAULT_HOSTING_PLAN, resolveHostingPlan } from '../../data/hostingPlans';
-import { seedProposalFormFromInquiry } from '../../data/proposalDefaults';
+import { seedProposalFormFromInquiry, todayYmd } from '../../data/proposalDefaults';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
-const emptyForm = {
-  summary: '',
-  scope: '',
-  deliverables: '',
-  exclusions: '',
-  timelineSummary: '',
-  kickoffDate: '',
-  paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
-  revisionLimit: '2',
-  designAmountDollars: '',
-  hostingPlan: DEFAULT_HOSTING_PLAN,
-};
+function createEmptyForm() {
+  return {
+    summary: '',
+    scope: '',
+    deliverables: '',
+    exclusions: '',
+    timelineSummary: '',
+    kickoffDate: todayYmd(),
+    packageSlug: '',
+    paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
+    revisionLimit: '2',
+    designAmountDollars: '',
+    hostingPlan: DEFAULT_HOSTING_PLAN,
+  };
+}
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -93,6 +96,9 @@ function buildPayload(values) {
   if (!values.paymentSchedule) {
     fieldErrors.paymentSchedule = 'Choose a payment schedule.';
   }
+  if (!values.packageSlug) {
+    fieldErrors.packageSlug = 'Choose a package.';
+  }
 
   const revisionRaw = String(values.revisionLimit ?? '').trim();
   let revisionLimit = null;
@@ -114,6 +120,7 @@ function buildPayload(values) {
       exclusions: values.exclusions.trim() || null,
       timelineSummary: values.timelineSummary.trim() || null,
       kickoffDate: values.kickoffDate?.trim() || null,
+      packageSlug: values.packageSlug || null,
       paymentSchedule: values.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
       revisionLimit,
       designAmountCents,
@@ -131,7 +138,7 @@ const ProposalNew = () => {
 
   const [inquiry, setInquiry] = useState(null);
   const [client, setClient] = useState(null);
-  const [values, setValues] = useState(emptyForm);
+  const [values, setValues] = useState(createEmptyForm);
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(Boolean(inquiryId));
   const [saving, setSaving] = useState(false);
@@ -276,7 +283,7 @@ const ProposalNew = () => {
               {client ? (
                 <>
                   <Field label="Name" value={client.name} />
-                  <Field label="Business Name" value={client.businessName} />
+                  <Field label="Business Name" value={inquiry.businessName || client?.businessName} />
                   <Field label="Email" value={client.email} />
                   <Field label="Phone" value={client.phone} />
                   <CtaButton to={`/admin/clients/${client.id}`} size="medium" secondary>
@@ -295,6 +302,10 @@ const ProposalNew = () => {
               <Field label="Email" value={inquiry.email} />
               <Field label="Phone" value={inquiry.phone} />
               <Field label="Business Name" value={inquiry.businessName} />
+              <Field
+                label="Package Requested"
+                value={inquiry.packageLabel || inquiry.packageSlug}
+              />
               <Field label="Message" value={inquiry.message} />
               {inquiry.type === 'project' ? (
                 <>

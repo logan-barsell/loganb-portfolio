@@ -1,70 +1,88 @@
-# Getting Started with Create React App
+# Logan Barsell Web Services
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Public portfolio site (React / CRA) plus an Express API for inquiries, admin, proposals, client project portal, billing (Stripe), and transactional email (Resend).
 
-## Available Scripts
+## Repo layout
 
-In the project directory, you can run:
+| Path | Purpose |
+|------|---------|
+| [`src/`](src/) | CRA frontend (marketing site, `/admin`, `/project/:id` portal) |
+| [`server/`](server/) | Express API (`/api`), SQLite, migrations, email/billing |
+| [`DEPLOY.md`](DEPLOY.md) | Production nginx, systemd, env, backups, DB reset |
+| [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) | Project stages and which emails fire when |
+| [`server/.env.example`](server/.env.example) | API env template |
 
-### `npm start`
+## Lifecycle (short)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```text
+Inquiry → Proposal → Accept (on hold) → Start → Complete → Ready for Launch → Hosting
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Details, admin actions, and email matrix: [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md).
 
-### `npm test`
+## Local development
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Two processes: API on `:3001`, CRA on `:3000` (CRA proxies `/api` via `src/setupProxy.js`).
 
-### `npm run build`
+```bash
+# API
+cp server/.env.example server/.env
+# Edit server/.env — at least ADMIN_EMAIL, ADMIN_PASSWORD_HASH, ADMIN_SESSION_SECRET,
+# CLIENT_SESSION_SECRET, PUBLIC_APP_URL, ALLOWED_ORIGIN
+cd server
+npm install
+npm run hash-password   # paste hash into ADMIN_PASSWORD_HASH
+npm run migrate
+npm run dev
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+# Frontend (repo root, second terminal)
+npm install
+npm start
+# If macOS/zsh HOST breaks CRA: env -u HOST npm start
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Admin: [http://localhost:3000/admin](http://localhost:3000/admin)  
+Health: [http://127.0.0.1:3001/api/health](http://127.0.0.1:3001/api/health)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Resend and Stripe are optional locally. Submissions still save if email fails; Checkout returns 503 until Stripe is configured.
 
-### `npm run eject`
+## Server commands
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Run from `server/` (or use root wrappers below).
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+| Command | What it does |
+|---------|----------------|
+| `npm run migrate` | Apply SQL migrations |
+| `npm run db:reset` | Cancel Stripe subs + delete customers from DB IDs, wipe SQLite/uploads, re-migrate |
+| `npm run db:reset -- --skip-stripe` | Wipe SQLite/uploads only |
+| `npm run seed:inquiry` | Insert a randomized test inquiry (no email by default; uses `INQUIRY_NOTIFY_TO` +plus tags for Resend) |
+| `npm run seed:inquiry -- --count 5 --type project` | Seed several project inquiries |
+| `npm run seed:inquiry -- --email` | Seed and send Resend notify + confirmation |
+| `npm run hash-password` | Generate `ADMIN_PASSWORD_HASH` |
+| `npm run dev` | API with `--watch` |
+| `npm start` | API without watch |
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**Stop the API before `db:reset`.** The script refuses to wipe if another process still has the SQLite file open (otherwise the running API keeps the old data).
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Production reset (stop `loganb-api` first):
 
-## Learn More
+```bash
+CONFIRM_DB_RESET=YES npm run db:reset -- --i-know-what-im-doing
+# Live Stripe key (sk_live_…):
+CONFIRM_DB_RESET=YES CONFIRM_STRIPE_RESET=YES npm run db:reset -- --i-know-what-im-doing
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Reset does **not** delete Stripe Prices, Products, or webhook endpoints. Full notes: [`DEPLOY.md`](DEPLOY.md#resetting-the-database).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Root shortcuts
 
-### Code Splitting
+```bash
+npm run server:dev       # server npm run dev
+npm run server:migrate   # server npm run migrate
+npm run server:db:reset  # server npm run db:reset (pass flags after --)
+npm run server:seed:inquiry
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Production
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+See [`DEPLOY.md`](DEPLOY.md) for nginx, systemd, `/etc/loganb-api.env`, Resend, Stripe webhooks, backups, and troubleshooting.

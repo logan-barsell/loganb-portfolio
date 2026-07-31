@@ -12,11 +12,11 @@ import ProposalFormFields, {
   centsToDollarsInput,
   dollarsToCents,
 } from '../../components/admin/ProposalFormFields';
-import { fetchProposal, updateProposal } from '../../api/adminClient';
+import { fetchProposal, updateProposal, beginProposalRevision } from '../../api/adminClient';
 import SubmitProposalModal from '../../components/admin/SubmitProposalModal';
 import InquiryAttachments from '../../components/admin/InquiryAttachments';
-import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
-import { inquiryTypeChipSx, pipelineStageChipSx } from '../../data/statusChips';
+import { inquiryTypeChipLabel, resolvePackageLabel, resolveStageLabel } from '../../data/adminNav';
+import { inquiryTypeChipSx, packageChipSx, pipelineStageChipSx, proposalStatusChipSx } from '../../data/statusChips';
 import {
   DEFAULT_PAYMENT_SCHEDULE,
   formatRevisionLimit,
@@ -72,6 +72,20 @@ function Field({ label, value }) {
   );
 }
 
+function ChipField({ label, chipLabel, chipSx }) {
+  if (!chipLabel) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      {label ? (
+        <Typography sx={{ color: colors.purple, fontSize: 13, fontWeight: 700, mb: 0.5 }}>
+          {label}
+        </Typography>
+      ) : null}
+      <Chip label={chipLabel} size="small" sx={chipSx} />
+    </Box>
+  );
+}
+
 function DetailBlock({ title, action, children }) {
   return (
     <Box sx={{ mb: 4 }}>
@@ -107,6 +121,7 @@ function proposalToForm(proposal) {
     exclusions: proposal.exclusions || '',
     timelineSummary: proposal.timelineSummary || '',
     kickoffDate: proposal.kickoffDate || '',
+    packageSlug: proposal.packageSlug || proposal.inquiry?.packageSlug || '',
     paymentSchedule: proposal.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
     revisionLimit:
       proposal.revisionLimit === null || proposal.revisionLimit === undefined
@@ -131,6 +146,9 @@ function buildPayload(values) {
   if (!values.paymentSchedule) {
     fieldErrors.paymentSchedule = 'Choose a payment schedule.';
   }
+  if (!values.packageSlug) {
+    fieldErrors.packageSlug = 'Choose a package.';
+  }
 
   const revisionRaw = String(values.revisionLimit ?? '').trim();
   let revisionLimit = null;
@@ -152,6 +170,7 @@ function buildPayload(values) {
       exclusions: values.exclusions.trim() || null,
       timelineSummary: values.timelineSummary.trim() || null,
       kickoffDate: values.kickoffDate?.trim() || null,
+      packageSlug: values.packageSlug || null,
       paymentSchedule: values.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
       revisionLimit,
       designAmountCents,
@@ -171,6 +190,10 @@ const ProposalDetail = () => {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
+
+  const isLocked = proposal?.status === 'accepted';
+  const needsBeginRevision =
+    proposal?.status === 'sent' || proposal?.status === 'revision_requested';
 
   useEffect(() => {
     let cancelled = false;
@@ -197,10 +220,25 @@ const ProposalDetail = () => {
     };
   }, [id, toast]);
 
-  const startEditing = () => {
-    if (!proposal) return;
-    setValues(proposalToForm(proposal));
+  const startEditing = async () => {
+    if (!proposal || isLocked) return;
     setFieldErrors({});
+    if (needsBeginRevision) {
+      setSaving(true);
+      try {
+        const data = await beginProposalRevision(id);
+        setProposal(data.proposal);
+        setValues(proposalToForm(data.proposal));
+        setEditing(true);
+        toast.success('Revision started. Save your changes, then resend when ready.');
+      } catch (err) {
+        toast.error(err.message || 'Failed to start revision.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    setValues(proposalToForm(proposal));
     setEditing(true);
   };
 
@@ -217,6 +255,7 @@ const ProposalDetail = () => {
       fieldErrors.designAmountCents ||
       fieldErrors.hostingPlan ||
       fieldErrors.paymentSchedule ||
+      fieldErrors.packageSlug ||
       fieldErrors.revisionLimit ||
       fieldErrors.kickoffDate
     ) {
@@ -284,12 +323,19 @@ const ProposalDetail = () => {
               sx={{ mb: 3, flexWrap: 'wrap', gap: 1.5 }}
             >
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                {proposal.statusLabel || proposal.status ? (
+                  <Chip
+                    label={proposal.statusLabel || proposal.status}
+                    size="small"
+                    sx={proposalStatusChipSx(proposal.status)}
+                  />
+                ) : null}
                 {proposal.inquiry ? (
                   <Chip
                     label={inquiryTypeChipLabel(
                       proposal.inquiry.type,
-                      proposal.inquiry.packageLabel,
-                      proposal.inquiry.packageSlug
+                      proposal.packageLabel || proposal.inquiry.packageLabel,
+                      proposal.packageSlug || proposal.inquiry.packageSlug
                     )}
                     size="small"
                     sx={inquiryTypeChipSx(proposal.inquiry.type)}
@@ -319,7 +365,10 @@ const ProposalDetail = () => {
               {proposal.client ? (
                 <>
                   <Field label="Name" value={proposal.client.name} />
-                  <Field label="Business Name" value={proposal.client.businessName} />
+                  <Field
+                    label="Business Name"
+                    value={proposal.inquiry?.businessName || proposal.client.businessName}
+                  />
                   <Field label="Email" value={proposal.client.email} />
                   <Field label="Phone" value={proposal.client.phone} />
                   <CtaButton to={`/admin/clients/${proposal.client.id}`} size="medium" secondary>
@@ -334,7 +383,16 @@ const ProposalDetail = () => {
             <DetailBlock title="Inquiry">
               {proposal.inquiry ? (
                 <>
+                  <ChipField
+                    label="Package Requested"
+                    chipLabel={resolvePackageLabel(
+                      proposal.inquiry.packageSlug,
+                      proposal.inquiry.packageLabel
+                    )}
+                    chipSx={packageChipSx}
+                  />
                   <Field label="Website Goals" value={proposal.inquiry.websiteGoals} />
+                  <Field label="Requested Features" value={proposal.inquiry.requestedFeatures} />
                   <Field label="Submitted" value={formatDate(proposal.inquiry.createdAt)} />
                   <CtaButton
                     to={`/admin/inquiries/${proposal.inquiry.id}`}
@@ -352,13 +410,22 @@ const ProposalDetail = () => {
             <DetailBlock
               title="Proposal"
               action={
-                !editing ? (
-                  <CtaButton type="button" size="medium" onClick={startEditing}>
-                    Edit
+                !editing && !isLocked ? (
+                  <CtaButton type="button" size="medium" onClick={startEditing} disabled={saving}>
+                    {needsBeginRevision ? 'Revise' : 'Edit'}
                   </CtaButton>
                 ) : null
               }
             >
+              <ChipField
+                chipLabel={proposal.statusLabel || proposal.status}
+                chipSx={proposalStatusChipSx(proposal.status)}
+              />
+              {isLocked ? (
+                <Typography sx={{ color: colors.muted, mb: 2, fontSize: 14 }}>
+                  This proposal was accepted and is locked. Commercial terms cannot be changed.
+                </Typography>
+              ) : null}
               {editing ? (
                 <Box component="form" onSubmit={handleSubmit}>
                   <ProposalFormFields
@@ -382,6 +449,11 @@ const ProposalDetail = () => {
                 </Box>
               ) : (
                 <>
+                  <ChipField
+                    label="Package"
+                    chipLabel={resolvePackageLabel(proposal.packageSlug, proposal.packageLabel)}
+                    chipSx={packageChipSx}
+                  />
                   <Field label="Summary" value={proposal.summary} />
                   <Field label="Scope" value={proposal.scope} />
                   <Field label="Deliverables" value={proposal.deliverables} />
@@ -440,7 +512,7 @@ const ProposalDetail = () => {
               />
             </DetailBlock>
 
-            {!editing ? (
+            {!editing && !isLocked ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
                 <CtaButton
                   type="button"
@@ -448,7 +520,11 @@ const ProposalDetail = () => {
                   onClick={() => setSubmitOpen(true)}
                   sx={{ px: { xs: 3, sm: 5 }, py: 1.25, fontSize: { xs: '1rem', sm: '1.1rem' } }}
                 >
-                  {proposal.status === 'draft' ? 'Submit Proposal' : 'Resend Proposal'}
+                  {proposal.contentChangedSinceSend
+                    ? 'Resend Revised Proposal'
+                    : proposal.hasBeenSent || proposal.status !== 'draft'
+                      ? 'Resend Proposal'
+                      : 'Submit Proposal'}
                 </CtaButton>
               </Box>
             ) : null}

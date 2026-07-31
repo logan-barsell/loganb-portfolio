@@ -18,8 +18,12 @@ import Section from '../../components/Section';
 import { fieldSx, selectMenuProps } from '../../components/forms/formStyles';
 import InquiryAttachments from '../../components/admin/InquiryAttachments';
 import AdminInvoicesSection from '../../components/admin/AdminInvoicesSection';
+import InquiryLinkedCard from '../../components/admin/InquiryLinkedCard';
+import ProposalLinkedCard from '../../components/admin/ProposalLinkedCard';
+import { formatKickoffDate } from '../../components/admin/linkedCardDates';
 import {
   fetchProject,
+  markProjectCompleted,
   markProjectStarted,
   resendPortalAccess,
   setProjectReadyForLaunch,
@@ -34,6 +38,7 @@ import {
   designPaymentChipSx,
   hostingStatusChipSx,
   inquiryTypeChipSx,
+  packageChipSx,
   pipelineStageChipSx,
 } from '../../data/statusChips';
 import {
@@ -42,13 +47,6 @@ import {
 } from '../../data/paymentSchedules';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
-
-const packageChipSx = {
-  color: colors.purple,
-  border: `1px solid ${colors.purple}`,
-  backgroundColor: colors.purpleSoft,
-  fontWeight: 600,
-};
 
 const DOMAIN_STATUS_OPTIONS = [
   { value: 'unknown', label: 'Unknown' },
@@ -66,17 +64,6 @@ function formatDate(iso) {
     }).format(new Date(iso));
   } catch {
     return iso;
-  }
-}
-
-function formatKickoffDate(ymd) {
-  if (!ymd) return null;
-  try {
-    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
-      new Date(`${ymd}T00:00:00`)
-    );
-  } catch {
-    return ymd;
   }
 }
 
@@ -185,6 +172,8 @@ const ProjectDetail = () => {
   const [resendOpen, setResendOpen] = useState(false);
   const [markStartedOpen, setMarkStartedOpen] = useState(false);
   const [markingStarted, setMarkingStarted] = useState(false);
+  const [markCompletedOpen, setMarkCompletedOpen] = useState(false);
+  const [markingCompleted, setMarkingCompleted] = useState(false);
   const [readyLaunchOpen, setReadyLaunchOpen] = useState(false);
   const [readyLaunchBusy, setReadyLaunchBusy] = useState(false);
   const [domainName, setDomainName] = useState('');
@@ -276,6 +265,26 @@ const ProjectDetail = () => {
     }
   };
 
+  const closeMarkCompletedModal = () => {
+    if (markingCompleted) return;
+    setMarkCompletedOpen(false);
+  };
+
+  const confirmMarkCompleted = async () => {
+    if (markingCompleted) return;
+    setMarkingCompleted(true);
+    try {
+      const data = await markProjectCompleted(id);
+      setProject(data.project);
+      toast.success('Project marked as completed.');
+      setMarkCompletedOpen(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to mark project as completed.');
+    } finally {
+      setMarkingCompleted(false);
+    }
+  };
+
   const closeReadyLaunchModal = () => {
     if (readyLaunchBusy) return;
     setReadyLaunchOpen(false);
@@ -315,7 +324,10 @@ const ProjectDetail = () => {
   };
 
   const packageLabel = project
-    ? resolvePackageLabel(project.inquiry?.packageSlug, project.inquiry?.packageLabel)
+    ? resolvePackageLabel(
+        project.proposal?.packageSlug || project.inquiry?.packageSlug,
+        project.proposal?.packageLabel || project.inquiry?.packageLabel
+      )
     : null;
   const portalAccess = project ? portalAccessChip(project.portal) : null;
   const hasPortalPassword = Boolean(project?.portal?.passwordSet);
@@ -356,8 +368,8 @@ const ProjectDetail = () => {
                   <Chip
                     label={inquiryTypeChipLabel(
                       project.inquiry.type,
-                      project.inquiry.packageLabel,
-                      project.inquiry.packageSlug
+                      project.proposal?.packageLabel || project.inquiry.packageLabel,
+                      project.proposal?.packageSlug || project.inquiry.packageSlug
                     )}
                     size="small"
                     sx={inquiryTypeChipSx(project.inquiry.type)}
@@ -423,7 +435,39 @@ const ProjectDetail = () => {
               </Box>
             ) : null}
 
-            {hasHostingPlan && !project.readyForLaunch ? (
+            {project.status === 'active' ? (
+              <Box
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  border: `1px solid rgba(149, 99, 187, 0.35)`,
+                  borderRadius: 1,
+                  backgroundColor: colors.cardBg,
+                }}
+              >
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="flex-start"
+                  justifyContent="space-between"
+                  sx={{ flexWrap: 'wrap', gap: 1.5 }}
+                >
+                  <Box>
+                    <Typography sx={{ color: colors.text, fontWeight: 600, mb: 0.5 }}>
+                      Project Active
+                    </Typography>
+                    <Typography sx={{ color: colors.muted }}>
+                      Mark as completed when the build is finished and ready for launch prep.
+                    </Typography>
+                  </Box>
+                  <CtaButton size="medium" onClick={() => setMarkCompletedOpen(true)}>
+                    Mark as Completed
+                  </CtaButton>
+                </Stack>
+              </Box>
+            ) : null}
+
+            {project.status === 'completed' && hasHostingPlan && !project.readyForLaunch ? (
               <Box
                 sx={{
                   mb: 3,
@@ -445,8 +489,8 @@ const ProjectDetail = () => {
                       Ready for Launch
                     </Typography>
                     <Typography sx={{ color: colors.muted }}>
-                      Mark when the site is ready so the client can start their hosting
-                      subscription.
+                      Mark when the site is ready to deploy so the client can start hosting.
+                      Domain or DNS details may still need coordination.
                     </Typography>
                   </Box>
                   <CtaButton size="medium" onClick={() => setReadyLaunchOpen(true)}>
@@ -510,6 +554,34 @@ const ProjectDetail = () => {
                 </>
               ) : (
                 <Typography sx={{ color: colors.muted }}>No linked client.</Typography>
+              )}
+            </DetailBlock>
+
+            <DetailBlock title="Inquiry">
+              {project.inquiry ? (
+                <InquiryLinkedCard
+                  inquiry={project.inquiry}
+                  fallbackName={project.client?.name}
+                  fallbackBusinessName={project.client?.businessName}
+                />
+              ) : (
+                <Typography sx={{ color: colors.muted }}>No linked inquiry.</Typography>
+              )}
+            </DetailBlock>
+
+            <DetailBlock title="Proposal">
+              {project.proposal ? (
+                <ProposalLinkedCard
+                  proposal={project.proposal}
+                  fallbackName={project.client?.name || project.inquiry?.name}
+                  fallbackBusinessName={
+                    project.client?.businessName || project.inquiry?.businessName
+                  }
+                  projectStatus={project.status}
+                  projectStatusLabel={project.statusLabel}
+                />
+              ) : (
+                <Typography sx={{ color: colors.muted }}>No linked proposal.</Typography>
               )}
             </DetailBlock>
 
@@ -582,27 +654,6 @@ const ProjectDetail = () => {
                   </CtaButton>
                 }
               />
-
-              <Stack direction="column" spacing={1.5} sx={{ mt: 1, alignItems: 'flex-start' }}>
-                {project.inquiry?.id ? (
-                  <CtaButton
-                    to={`/admin/inquiries/${project.inquiry.id}`}
-                    size="medium"
-                    secondary
-                  >
-                    View Inquiry
-                  </CtaButton>
-                ) : null}
-                {project.proposal?.id ? (
-                  <CtaButton
-                    to={`/admin/proposals/${project.proposal.id}`}
-                    size="medium"
-                    secondary
-                  >
-                    View Proposal
-                  </CtaButton>
-                ) : null}
-              </Stack>
             </DetailBlock>
 
             <DetailBlock
@@ -615,9 +666,6 @@ const ProjectDetail = () => {
                 ) : null
               }
             >
-              {project.inquiry?.domainName ? (
-                <Field label="Intake Domain Name" value={project.inquiry.domainName} />
-              ) : null}
               {editingDomain ? (
                 <Stack spacing={2} sx={{ maxWidth: 480 }}>
                   <TextField
@@ -817,7 +865,7 @@ const ProjectDetail = () => {
         <DialogContent>
           <Typography sx={{ color: colors.muted, mb: 3, fontSize: 14 }}>
             This sets the project to active and records a manual start, bypassing automatic
-            kickoff checks.
+            kickoff checks. The client will be emailed that work has started.
           </Typography>
           <Stack direction="row" spacing={1.5} justifyContent="flex-end">
             <Button
@@ -837,6 +885,72 @@ const ProjectDetail = () => {
             </Button>
             <CtaButton size="medium" onClick={confirmMarkStarted} disabled={markingStarted}>
               {markingStarted ? 'Starting…' : 'Mark as Started'}
+            </CtaButton>
+          </Stack>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={markCompletedOpen}
+        onClose={closeMarkCompletedModal}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            backgroundColor: colors.navSolid,
+            color: colors.text,
+            border: `1px solid rgba(149, 99, 187, 0.5)`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            color: colors.text,
+            pr: 1,
+          }}
+        >
+          Mark Project as Completed?
+          <IconButton
+            aria-label="Close"
+            onClick={closeMarkCompletedModal}
+            disabled={markingCompleted}
+            sx={{
+              color: colors.muted,
+              '&.Mui-disabled': {
+                opacity: 1,
+                color: colors.muted,
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: colors.muted, mb: 3, fontSize: 14 }}>
+            This marks the build as finished. After this, you can unlock Ready for Launch when
+            the site is ready to deploy. The client will be emailed.
+          </Typography>
+          <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+            <Button
+              onClick={closeMarkCompletedModal}
+              disabled={markingCompleted}
+              sx={{
+                color: colors.muted,
+                textTransform: 'none',
+                '&.Mui-disabled': {
+                  opacity: 1,
+                  color: colors.muted,
+                  WebkitTextFillColor: colors.muted,
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <CtaButton size="medium" onClick={confirmMarkCompleted} disabled={markingCompleted}>
+              {markingCompleted ? 'Saving…' : 'Mark as Completed'}
             </CtaButton>
           </Stack>
         </DialogContent>
@@ -882,7 +996,8 @@ const ProjectDetail = () => {
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ color: colors.muted, mb: 3, fontSize: 14 }}>
-            This unlocks Start Hosting in the client portal so they can begin paying for hosting.
+            This unlocks Start Hosting in the client portal. Domain or DNS details may still need
+            coordination. The client will be emailed.
           </Typography>
           <Stack direction="row" spacing={1.5} justifyContent="flex-end">
             <Button

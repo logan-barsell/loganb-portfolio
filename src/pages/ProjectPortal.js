@@ -35,6 +35,7 @@ import {
   designPaymentChipSx,
   hostingStatusChipSx,
   invoiceStatusChipSx,
+  packageChipSx,
   pipelineStageChipSx,
 } from '../data/statusChips';
 import {
@@ -50,13 +51,6 @@ const DOMAIN_STATUS_OPTIONS = [
   { value: 'needs_purchase', label: 'Needs purchase' },
   { value: 'connected', label: 'Connected' },
 ];
-
-const packageChipSx = {
-  color: colors.purple,
-  border: `1px solid ${colors.purple}`,
-  backgroundColor: colors.purpleSoft,
-  fontWeight: 600,
-};
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -337,8 +331,8 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
   const billing = project.billing || {};
   const stripeEnabled = Boolean(billing.stripeEnabled);
   const headerPackageLabel = resolvePackageLabel(
-    project.inquiry?.packageSlug,
-    project.inquiry?.packageLabel
+    project.proposal?.packageSlug || project.inquiry?.packageSlug,
+    project.proposal?.packageLabel || project.inquiry?.packageLabel
   );
 
   const redirectToCheckout = async (key, action) => {
@@ -451,6 +445,28 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
             <Typography sx={{ color: colors.muted }}>
               {project.activationBlockReason ||
                 'Waiting for kickoff conditions before work begins.'}
+            </Typography>
+          </Box>
+        ) : null}
+
+        {project.status === 'completed' &&
+        (billing.hasHosting || billing.hostingMonthlyLabel) &&
+        !project.readyForLaunch ? (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              border: `1px solid rgba(149, 99, 187, 0.35)`,
+              borderRadius: 1,
+              backgroundColor: colors.cardBg,
+            }}
+          >
+            <Typography sx={{ color: colors.text, fontWeight: 600, mb: 0.5 }}>
+              Build complete
+            </Typography>
+            <Typography sx={{ color: colors.muted }}>
+              Launch and hosting will unlock when your site is ready to go live. Domain or DNS
+              details may still need a quick check before then.
             </Typography>
           </Box>
         ) : null}
@@ -576,8 +592,8 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
 
         <Block title="Project Overview">
           <PackageChipField
-            packageLabel={project.inquiry?.packageLabel}
-            packageSlug={project.inquiry?.packageSlug}
+            packageLabel={project.proposal?.packageLabel || project.inquiry?.packageLabel}
+            packageSlug={project.proposal?.packageSlug || project.inquiry?.packageSlug}
           />
           <Field label="Summary" value={project.proposal?.summary} />
           <Field label="Scope" value={project.proposal?.scope} />
@@ -646,8 +662,17 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
           !billing.hostingSubscriptionActive &&
           !billing.hostingCheckoutAllowed ? (
             <Typography sx={{ color: colors.muted, mb: 1.5, mt: 0.5 }}>
-              Hosting starts when your site is ready to launch. You’ll be able to begin your
-              subscription here once everything is set.
+              {project.status === 'completed'
+                ? 'Hosting unlocks when launch is ready. Domain or DNS details may still need coordination before you start a subscription.'
+                : 'Hosting starts when your site is ready to launch. You’ll be able to begin your subscription here once the build is complete and launch is unlocked.'}
+            </Typography>
+          ) : null}
+          {(billing.hasHosting || billing.hostingMonthlyLabel) &&
+          !billing.hostingSubscriptionActive &&
+          billing.hostingCheckoutAllowed ? (
+            <Typography sx={{ color: colors.muted, mb: 1.5, mt: 0.5 }}>
+              Hosting is unlocked. If you still need help with domain or DNS before going live,
+              reply to any project email or reach out anytime.
             </Typography>
           ) : null}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 1 }}>

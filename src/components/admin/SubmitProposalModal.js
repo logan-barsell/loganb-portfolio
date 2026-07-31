@@ -13,19 +13,34 @@ import { sendProposal } from '../../api/adminClient';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
 
-function defaultSubject(proposal) {
-  const who =
-    proposal?.client?.businessName || proposal?.client?.name || proposal?.inquiry?.businessName;
+function engagementWho(proposal) {
+  return (
+    proposal?.inquiry?.businessName ||
+    proposal?.client?.businessName ||
+    proposal?.client?.name ||
+    null
+  );
+}
+
+function defaultSubject(proposal, isRevised) {
+  const who = engagementWho(proposal);
+  if (isRevised) {
+    return who ? `Updated website proposal for ${who}` : 'Updated website proposal';
+  }
   return who ? `Website proposal for ${who}` : 'Website proposal';
 }
 
-function defaultMessage() {
+function defaultMessage(isRevised) {
+  if (isRevised) {
+    return `I updated your proposal based on our latest discussion. Use the button in this email to review the revised version — you can accept, request another revision, or decline from that page.\n\nLooking forward to hearing from you.`;
+  }
   return `Thank you for sharing your project details. I put together a proposal for you to review. Use the button in this email to open it — you can accept, request a revision, or decline from that page.\n\nLooking forward to hearing from you.`;
 }
 
 const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
   const toast = useToast();
-  const isResend = proposal?.status && proposal.status !== 'draft';
+  const isRevised = Boolean(proposal?.contentChangedSinceSend);
+  const isResend = Boolean(proposal?.hasBeenSent) || (proposal?.status && proposal.status !== 'draft');
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
   const [subject, setSubject] = useState('');
@@ -37,10 +52,10 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
     if (!open || !proposal) return;
     setTo(proposal.client?.email || '');
     setCc('');
-    setSubject(defaultSubject(proposal));
-    setMessage(defaultMessage());
+    setSubject(defaultSubject(proposal, isRevised));
+    setMessage(defaultMessage(isRevised));
     setFieldErrors({});
-  }, [open, proposal]);
+  }, [open, proposal, isRevised]);
 
   const handleClose = () => {
     if (sending) return;
@@ -60,7 +75,10 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
         subject: subject.trim(),
         message: message.trim(),
       });
-      toast.success(isResend ? 'Proposal resent.' : 'Proposal sent.');
+      const revised = Boolean(data.revised);
+      toast.success(
+        revised ? 'Revised proposal sent.' : isResend ? 'Proposal resent.' : 'Proposal sent.'
+      );
       onSent?.(data.proposal);
       onClose?.();
     } catch (err) {
@@ -72,6 +90,15 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
       setSending(false);
     }
   };
+
+  const title = isRevised ? 'Resend Revised Proposal' : isResend ? 'Resend Proposal' : 'Submit Proposal';
+  const submitLabel = sending
+    ? 'Sending…'
+    : isRevised
+      ? 'Resend Revised Proposal'
+      : isResend
+        ? 'Resend Proposal'
+        : 'Send Proposal';
 
   return (
     <Dialog
@@ -96,7 +123,7 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
           pr: 1,
         }}
       >
-        {isResend ? 'Resend Proposal' : 'Submit Proposal'}
+        {title}
         <IconButton
           aria-label="Close"
           onClick={handleClose}
@@ -114,8 +141,9 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
       </DialogTitle>
       <DialogContent>
         <Typography sx={{ color: colors.muted, mb: 2.5, fontSize: 14 }}>
-          Review the email details, then send a secure link for the client to view the proposal.
-          Links expire after 14 days.
+          {isRevised
+            ? 'Content changed since the last send. This will email a revised proposal link. Links expire after 14 days.'
+            : 'Review the email details, then send a secure link for the client to view the proposal. Links expire after 14 days.'}
         </Typography>
         <Stack component="form" spacing={2} onSubmit={handleSubmit}>
           <TextField
@@ -172,7 +200,7 @@ const SubmitProposalModal = ({ open, onClose, proposal, onSent }) => {
               Cancel
             </CtaButton>
             <CtaButton type="submit" disabled={sending}>
-              {sending ? 'Sending…' : isResend ? 'Resend Proposal' : 'Send Proposal'}
+              {submitLabel}
             </CtaButton>
           </Stack>
         </Stack>

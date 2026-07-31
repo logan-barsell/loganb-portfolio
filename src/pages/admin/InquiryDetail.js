@@ -9,14 +9,14 @@ import Typography from '@mui/material/Typography';
 import CtaButton from '../../components/CtaButton';
 import Section from '../../components/Section';
 import InquiryAttachments from '../../components/admin/InquiryAttachments';
-import LinkedRecordCard from '../../components/admin/LinkedRecordCard';
+import ProposalLinkedCard from '../../components/admin/ProposalLinkedCard';
+import ProjectLinkedCard from '../../components/admin/ProjectLinkedCard';
 import { fetchInquiry, markInquiryContacted } from '../../api/adminClient';
-import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
+import { inquiryTypeChipLabel, resolvePackageLabel, resolveStageLabel } from '../../data/adminNav';
 import {
   inquiryTypeChipSx,
+  packageChipSx,
   pipelineStageChipSx,
-  projectStatusChipSx,
-  proposalStatusChipSx,
 } from '../../data/statusChips';
 import {
   resolveBudgetLabel,
@@ -48,6 +48,18 @@ function Field({ label, value }) {
       <Typography sx={{ color: colors.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {value}
       </Typography>
+    </Box>
+  );
+}
+
+function ChipField({ label, chipLabel, chipSx }) {
+  if (!chipLabel) return null;
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Typography sx={{ color: colors.purple, fontSize: 13, fontWeight: 700, mb: 0.5 }}>
+        {label}
+      </Typography>
+      <Chip label={chipLabel} size="small" sx={chipSx} />
     </Box>
   );
 }
@@ -196,7 +208,12 @@ const InquiryDetail = () => {
             </DetailSection>
 
             {inquiry.type === 'project' ? (
-              <DetailSection title="Project Requirements">
+              <DetailSection title="Inquiry Details">
+                <ChipField
+                  label="Package Selected"
+                  chipLabel={resolvePackageLabel(inquiry.packageSlug, inquiry.packageLabel)}
+                  chipSx={packageChipSx}
+                />
                 <Field label="Website Goals" value={inquiry.websiteGoals} />
                 <Field label="Current Website" value={inquiry.currentWebsite} />
                 <Field label="Requested Features" value={inquiry.requestedFeatures} />
@@ -233,17 +250,11 @@ const InquiryDetail = () => {
                 ) : (
                   <Stack spacing={1.5}>
                     {inquiry.proposals.map((proposal) => (
-                      <LinkedRecordCard
+                      <ProposalLinkedCard
                         key={proposal.id}
-                        chips={[
-                          {
-                            label: proposal.statusLabel,
-                            sx: proposalStatusChipSx(proposal.status),
-                          },
-                        ]}
-                        dateLabel={formatSubmitted(proposal.sentAt || proposal.createdAt)}
-                        viewTo={`/admin/proposals/${proposal.id}`}
-                        viewLabel="View Proposal"
+                        proposal={proposal}
+                        fallbackName={inquiry.name}
+                        fallbackBusinessName={inquiry.businessName}
                       />
                     ))}
                   </Stack>
@@ -253,23 +264,15 @@ const InquiryDetail = () => {
 
             {inquiry.type === 'project' && inquiry.project ? (
               <DetailSection title="Project">
-                <LinkedRecordCard
-                  chips={[
-                    {
-                      label: inquiry.project.statusLabel || inquiry.project.status,
-                      sx: projectStatusChipSx(inquiry.project.status),
-                    },
-                  ]}
-                  dateLabel={`Created ${formatSubmitted(inquiry.project.createdAt)}`}
-                  viewTo={`/admin/projects/${inquiry.project.id}`}
-                  viewLabel="View Project"
+                <ProjectLinkedCard
+                  project={inquiry.project}
+                  fallbackName={inquiry.name}
+                  fallbackBusinessName={inquiry.businessName}
                 />
               </DetailSection>
             ) : null}
 
-            {inquiry.type === 'project' &&
-            inquiry.clientId &&
-            !(inquiry.proposals || []).length ? (
+            {inquiry.type === 'project' && inquiry.clientId && !(inquiry.proposals || []).length ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
                 <CtaButton
                   to={`/admin/proposals/new?inquiryId=${encodeURIComponent(inquiry.id)}`}

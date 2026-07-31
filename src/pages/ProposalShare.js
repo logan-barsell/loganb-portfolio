@@ -145,6 +145,7 @@ const ProposalShare = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
+  const [resultModal, setResultModal] = useState(null);
   const [revisionText, setRevisionText] = useState('');
   const [declineReason, setDeclineReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -174,12 +175,23 @@ const ProposalShare = () => {
   const client = share?.client;
   const inquiry = share?.inquiry;
   const proposal = share?.proposal;
-  const displayName = client?.businessName || client?.name || inquiry?.businessName || inquiry?.name;
+  const displayName = inquiry?.businessName || client?.businessName || inquiry?.name || client?.name;
   const greetName = (client?.name || inquiry?.name || '').trim().split(/\s+/)[0];
   const status = proposal?.status;
   const decided = status === 'accepted' || status === 'declined';
   const acceptDisabled = status === 'accepted' || submitting;
   const declineDisabled = status === 'declined' || submitting;
+
+  const greetingLead = greetName ? `Hi ${greetName}` : 'Hi';
+  const forBusiness = displayName ? ` for ${displayName}` : '';
+  const introMessage =
+    status === 'accepted'
+      ? `${greetingLead} — thank you for approving the proposal${forBusiness}. You can review the details below.`
+      : status === 'revision_requested'
+        ? `${greetingLead} — thanks for requesting a revision on the proposal${forBusiness}. I've received your notes and will follow up with an updated proposal.`
+        : status === 'declined'
+          ? `${greetingLead} — you've declined the proposal${forBusiness}. You can still review the details below.`
+          : `${greetingLead}${displayName ? ` — here is the proposal for ${displayName}` : ''}. Review the details below, then choose how you would like to proceed.`;
 
   const closeModal = () => {
     if (submitting) return;
@@ -204,8 +216,8 @@ const ProposalShare = () => {
     try {
       const data = await acceptProposalShare(token);
       applyShare(data.share);
-      toast.success(data.already ? 'Proposal already approved.' : 'Proposal approved.');
       clearModal();
+      setResultModal(data.already ? 'accepted-already' : 'accepted');
     } catch (err) {
       toast.error(err.message || 'Unable to accept proposal.');
     } finally {
@@ -225,8 +237,8 @@ const ProposalShare = () => {
     try {
       const data = await reviseProposalShare(token, { message });
       applyShare(data.share);
-      toast.success('Revision request sent.');
       clearModal();
+      setResultModal('revised');
     } catch (err) {
       toast.error(err.message || 'Unable to send revision request.');
     } finally {
@@ -243,8 +255,8 @@ const ProposalShare = () => {
         reason: declineReason.trim() || undefined,
       });
       applyShare(data.share);
-      toast.success(data.already ? 'Proposal already declined.' : 'Proposal declined.');
       clearModal();
+      setResultModal(data.already ? 'declined-already' : 'declined');
     } catch (err) {
       toast.error(err.message || 'Unable to decline proposal.');
     } finally {
@@ -287,9 +299,7 @@ const ProposalShare = () => {
             </Stack>
 
             <Typography sx={{ color: colors.muted, mb: 4, maxWidth: 640 }}>
-              Hi{greetName ? ` ${greetName}` : ''}
-              {displayName ? ` — here is the proposal for ${displayName}` : ''}. Review the details
-              below, then choose how you would like to proceed.
+              {introMessage}
             </Typography>
 
             <Block title="Your Project">
@@ -297,10 +307,6 @@ const ProposalShare = () => {
               <Field label="Business" value={inquiry?.businessName || client?.businessName} />
               <Field label="Email" value={inquiry?.email || client?.email} />
               <Field label="Phone" value={inquiry?.phone} />
-              <PackageChipField
-                packageLabel={inquiry?.packageLabel}
-                packageSlug={inquiry?.packageSlug}
-              />
               <Field label="Message" value={inquiry?.message} />
               <Field label="Website Goals" value={inquiry?.websiteGoals} />
               <Field label="Current Website" value={inquiry?.currentWebsite} />
@@ -318,6 +324,10 @@ const ProposalShare = () => {
             </Block>
 
             <Block title="Proposal">
+              <PackageChipField
+                packageLabel={proposal?.packageLabel}
+                packageSlug={proposal?.packageSlug}
+              />
               <Field label="Summary" value={proposal?.summary} />
               <Field label="Scope" value={proposal?.scope} />
               <Field label="Deliverables" value={proposal?.deliverables} />
@@ -349,65 +359,76 @@ const ProposalShare = () => {
               <Field label="Hosting Monthly" value={proposal?.hostingMonthlyLabel} />
             </Block>
 
-            <Box sx={{ mt: 2, mb: 1 }}>
-              <Typography
-                sx={{
-                  color: colors.muted,
-                  textAlign: 'center',
-                  mb: 2.5,
-                  fontSize: 14,
-                }}
-              >
-                {decided ? 'Change your mind?' : 'Ready to decide?'}
-              </Typography>
-              <Stack spacing={1.5} alignItems="center">
-                <CtaButton
-                  type="button"
-                  size="large"
-                  disabled={acceptDisabled}
-                  onClick={() => setModal('accept')}
-                >
-                  Accept Proposal
-                </CtaButton>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={1.5}
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <CtaButton
-                    type="button"
-                    size="large"
-                    secondary
-                    disabled={submitting}
-                    onClick={() => setModal('revise')}
-                  >
-                    Request Revision
-                  </CtaButton>
-                  <CtaButton
-                    type="button"
-                    size="large"
-                    secondary
-                    disabled={declineDisabled}
-                    onClick={() => setModal('decline')}
+            {/*
+              Post-accept/decline “Change your mind?” actions are disabled while
+              accepted proposals stay locked. Flip SHOW_POST_DECISION_ACTIONS to true
+              when reopen/change-mind returns.
+            */}
+            {(() => {
+              const SHOW_POST_DECISION_ACTIONS = false;
+              if (decided && !SHOW_POST_DECISION_ACTIONS) return null;
+              return (
+                <Box sx={{ mt: 2, mb: 1 }}>
+                  <Typography
                     sx={{
-                      color: '#e57373',
-                      '&:hover': {
-                        opacity: 1,
-                        backgroundColor: 'rgba(229, 115, 115, 0.12)',
-                      },
-                      '&.Mui-disabled': {
-                        color: '#c47a7a',
-                        WebkitTextFillColor: '#c47a7a',
-                        borderColor: 'transparent',
-                      },
+                      color: colors.muted,
+                      textAlign: 'center',
+                      mb: 2.5,
+                      fontSize: 14,
                     }}
                   >
-                    Decline Proposal
-                  </CtaButton>
-                </Stack>
-              </Stack>
-            </Box>
+                    {decided ? 'Change your mind?' : 'Ready to decide?'}
+                  </Typography>
+                  <Stack spacing={1.5} alignItems="center">
+                    <CtaButton
+                      type="button"
+                      size="large"
+                      disabled={acceptDisabled}
+                      onClick={() => setModal('accept')}
+                    >
+                      Accept Proposal
+                    </CtaButton>
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1.5}
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <CtaButton
+                        type="button"
+                        size="large"
+                        secondary
+                        disabled={submitting}
+                        onClick={() => setModal('revise')}
+                      >
+                        Request Revision
+                      </CtaButton>
+                      <CtaButton
+                        type="button"
+                        size="large"
+                        secondary
+                        disabled={declineDisabled}
+                        onClick={() => setModal('decline')}
+                        sx={{
+                          color: '#e57373',
+                          '&:hover': {
+                            opacity: 1,
+                            backgroundColor: 'rgba(229, 115, 115, 0.12)',
+                          },
+                          '&.Mui-disabled': {
+                            color: '#c47a7a',
+                            WebkitTextFillColor: '#c47a7a',
+                            borderColor: 'transparent',
+                          },
+                        }}
+                      >
+                        Decline Proposal
+                      </CtaButton>
+                    </Stack>
+                  </Stack>
+                </Box>
+              );
+            })()}
           </>
         ) : null}
       </Section>
@@ -547,6 +568,51 @@ const ProposalShare = () => {
                 {submitting ? 'Declining…' : 'Decline Proposal'}
               </CtaButton>
             </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(resultModal)}
+        onClose={() => setResultModal(null)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: dialogPaperSx }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
+          {resultModal === 'accepted' || resultModal === 'accepted-already'
+            ? 'Proposal accepted'
+            : resultModal === 'revised'
+              ? 'Revision requested'
+              : resultModal === 'declined' || resultModal === 'declined-already'
+                ? 'Proposal declined'
+                : 'Thank you'}
+          <IconButton
+            aria-label="Close"
+            onClick={() => setResultModal(null)}
+            sx={{ color: colors.muted }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: colors.text, mb: 3 }}>
+            {resultModal === 'accepted'
+              ? 'Thank you for accepting. I just emailed you a link to set up your project portal — please check your inbox (and spam folder) to choose a password and get started.'
+              : resultModal === 'accepted-already'
+                ? 'This proposal was already accepted. Check your email for the project portal setup link if you still need to create your password.'
+                : resultModal === 'revised'
+                  ? 'Thanks for sharing your notes. I will review them and get back to you with an updated proposal as soon as possible.'
+                  : resultModal === 'declined'
+                    ? 'Thanks for letting me know. No further action is needed on your end — if your plans change later, you are always welcome to reach out.'
+                    : resultModal === 'declined-already'
+                      ? 'This proposal was already declined. If you would like to revisit working together, feel free to get in touch anytime.'
+                      : null}
+          </Typography>
+          <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+            <CtaButton type="button" onClick={() => setResultModal(null)}>
+              Close
+            </CtaButton>
           </Stack>
         </DialogContent>
       </Dialog>

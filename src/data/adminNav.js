@@ -85,8 +85,8 @@ export const proposalSortOptions = [
 
 export const projectStatusOptions = [
   { value: '', label: 'All Statuses' },
-  { value: 'active', label: 'Active' },
-  { value: 'on_hold', label: 'On Hold' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'active', label: 'Active Project' },
+  { value: 'on_hold', label: 'On Hold Project' },
+  { value: 'completed', label: 'Completed Project' },
+  { value: 'cancelled', label: 'Cancelled Project' },
 ];

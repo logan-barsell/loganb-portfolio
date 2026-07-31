@@ -109,6 +109,12 @@ export async function updateProposal(id, body) {
   });
 }
 
+export async function beginProposalRevision(id) {
+  return adminRequest(`/api/admin/proposals/${encodeURIComponent(id)}/begin-revision`, {
+    method: 'POST',
+  });
+}
+
 export async function sendProposal(id, body) {
   return adminRequest(`/api/admin/proposals/${encodeURIComponent(id)}/send`, {
     method: 'POST',
@@ -172,6 +178,13 @@ export async function updateProject(id, body) {
 
 export async function markProjectStarted(id) {
   return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}/mark-started`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function markProjectCompleted(id) {
+  return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}/mark-completed`, {
     method: 'POST',
     body: JSON.stringify({}),
   });

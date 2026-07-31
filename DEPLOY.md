@@ -2,6 +2,9 @@
 
 This CRA app uses client-side routes (`/services`, `/pricing`, `/work`, etc.) and an Express API under `/api`.
 
+Local setup and commands: [`README.md`](README.md).  
+Project stages and emails: [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md).
+
 ## nginx
 
 Proxy `/api/` to the local Node service **before** the SPA fallback:
@@ -171,13 +174,14 @@ Protected placeholders:
 ## Local development
 
 ```bash
-# terminal 1
+# terminal 1 — API
 cp server/.env.example server/.env
 # edit RESEND_API_KEY (optional locally; submissions still save if email fails)
-# set ADMIN_EMAIL, ADMIN_PASSWORD_HASH (npm run hash-password), ADMIN_SESSION_SECRET, CLIENT_SESSION_SECRET, PUBLIC_APP_URL=http://localhost:3000, ALLOWED_ORIGIN=http://localhost:3000
+# set ADMIN_EMAIL, ADMIN_PASSWORD_HASH (npm run hash-password), ADMIN_SESSION_SECRET,
+# CLIENT_SESSION_SECRET, PUBLIC_APP_URL=http://localhost:3000, ALLOWED_ORIGIN=http://localhost:3000
 cd server && npm install && npm run migrate && npm run dev
 
-# terminal 2
+# terminal 2 — CRA (repo root)
 npm start
 ```
 
@@ -188,6 +192,44 @@ On macOS/zsh, `HOST` is often preset to your machine hostname and can confuse ol
 ```bash
 env -u HOST npm start
 ```
+
+Product overview and command index: [`README.md`](README.md).  
+Project stages and emails: [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md).
+
+## Ops cheat sheet
+
+| Task | Command / location |
+|------|--------------------|
+| Env file (prod) | `/etc/loganb-api.env` |
+| Data + uploads | `/var/lib/loganb-api/` |
+| Service | `sudo systemctl restart loganb-api` |
+| Logs | `sudo journalctl -u loganb-api -n 100 --no-pager` |
+| Health | `curl -s http://127.0.0.1:3001/api/health` |
+| Migrate only | `cd /path/to/repo/server && npm run migrate` |
+| Hash admin password | `cd server && npm run hash-password` |
+
+Stop the API before any database reset. `db:reset` refuses to run if another process still has the SQLite file open.
+
+## Resetting the database
+
+Wipes SQLite (+ WAL/SHM) and upload files, then re-applies migrations. By default also **cancels Stripe subscriptions** and **deletes Stripe customers** referenced in the DB.
+
+Does **not** delete Stripe Prices, Products, or webhook endpoints. Objects that exist in Stripe but were never stored in the DB are not removed.
+
+```bash
+# Local — stop npm run dev first
+cd server && npm run db:reset
+cd server && npm run db:reset -- --skip-stripe
+
+# Production (e.g. pre-launch, no real clients) — stop loganb-api first
+cd /path/to/repo/server
+CONFIRM_DB_RESET=YES npm run db:reset -- --i-know-what-im-doing
+
+# Live Stripe secret (sk_live_…) also requires:
+CONFIRM_DB_RESET=YES CONFIRM_STRIPE_RESET=YES npm run db:reset -- --i-know-what-im-doing
+```
+
+Script: [`server/scripts/reset-db.js`](server/scripts/reset-db.js).
 
 ## Inspecting inquiries over SSH
 

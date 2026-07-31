@@ -6,30 +6,13 @@ import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Section from '../../components/Section';
-import LinkedRecordCard from '../../components/admin/LinkedRecordCard';
+import InquiryLinkedCard from '../../components/admin/InquiryLinkedCard';
+import ProposalLinkedCard from '../../components/admin/ProposalLinkedCard';
+import ProjectLinkedCard from '../../components/admin/ProjectLinkedCard';
 import AdminInvoicesSection from '../../components/admin/AdminInvoicesSection';
 import { fetchClient } from '../../api/adminClient';
-import { inquiryTypeChipLabel, resolveStageLabel } from '../../data/adminNav';
-import {
-  inquiryTypeChipSx,
-  pipelineStageChipSx,
-  projectStatusChipSx,
-  proposalStatusChipSx,
-} from '../../data/statusChips';
 import { useToast } from '../../toast/ToastProvider';
 import { colors } from '../../theme/colors';
-
-function formatSubmitted(iso) {
-  if (!iso) return '—';
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 function Field({ label, value }) {
   if (value === null || value === undefined || String(value).trim() === '') return null;
@@ -118,25 +101,11 @@ const ClientDetail = () => {
               ) : (
                 <Stack spacing={1.5}>
                   {client.inquiries.map((inquiry) => (
-                    <LinkedRecordCard
+                    <InquiryLinkedCard
                       key={inquiry.id}
-                      chips={[
-                        {
-                          label: inquiryTypeChipLabel(
-                            inquiry.type,
-                            inquiry.packageLabel,
-                            inquiry.packageSlug
-                          ),
-                          sx: inquiryTypeChipSx(inquiry.type),
-                        },
-                        {
-                          label: resolveStageLabel(inquiry.stage, inquiry.stageLabel),
-                          sx: pipelineStageChipSx(inquiry.stage),
-                        },
-                      ]}
-                      dateLabel={formatSubmitted(inquiry.createdAt)}
-                      viewTo={`/admin/inquiries/${inquiry.id}`}
-                      viewLabel="View Inquiry"
+                      inquiry={inquiry}
+                      fallbackName={client.name}
+                      fallbackBusinessName={client.businessName}
                     />
                   ))}
                 </Stack>
@@ -149,17 +118,11 @@ const ClientDetail = () => {
               ) : (
                 <Stack spacing={1.5}>
                   {client.proposals.map((proposal) => (
-                    <LinkedRecordCard
+                    <ProposalLinkedCard
                       key={proposal.id}
-                      chips={[
-                        {
-                          label: proposal.statusLabel,
-                          sx: proposalStatusChipSx(proposal.status),
-                        },
-                      ]}
-                      dateLabel={formatSubmitted(proposal.sentAt || proposal.createdAt)}
-                      viewTo={`/admin/proposals/${proposal.id}`}
-                      viewLabel="View Proposal"
+                      proposal={proposal}
+                      fallbackName={client.name}
+                      fallbackBusinessName={client.businessName}
                     />
                   ))}
                 </Stack>
@@ -174,17 +137,11 @@ const ClientDetail = () => {
               ) : (
                 <Stack spacing={1.5}>
                   {client.projects.map((project) => (
-                    <LinkedRecordCard
+                    <ProjectLinkedCard
                       key={project.id}
-                      chips={[
-                        {
-                          label: project.statusLabel || project.status,
-                          sx: projectStatusChipSx(project.status),
-                        },
-                      ]}
-                      dateLabel={`Created ${formatSubmitted(project.createdAt)}`}
-                      viewTo={`/admin/projects/${project.id}`}
-                      viewLabel="View Project"
+                      project={project}
+                      fallbackName={client.name}
+                      fallbackBusinessName={client.businessName}
                     />
                   ))}
                 </Stack>

@@ -5,6 +5,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { fieldSx } from '../forms/formStyles';
+import ThemedDatePicker from '../forms/ThemedDatePicker';
+import { packageOptions } from '../../data/intakeOptions';
 import {
   paymentScheduleOptions,
   revisionLimitOptions,
@@ -31,6 +33,27 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
 
   return (
     <Stack spacing={2.5}>
+      <TextField
+        select
+        label="Package"
+        value={values.packageSlug || ''}
+        onChange={update('packageSlug')}
+        fullWidth
+        required
+        disabled={disabled}
+        error={Boolean(fieldErrors.packageSlug)}
+        helperText={
+          fieldErrors.packageSlug ||
+          'Commercial package for this proposal. Intake selection stays on the inquiry.'
+        }
+        sx={fieldSx}
+      >
+        {packageOptions.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </TextField>
       <TextField
         label="Summary"
         value={values.summary}
@@ -98,20 +121,16 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         }
         sx={fieldSx}
       />
-      <TextField
+      <ThemedDatePicker
         label="Target Kickoff Date"
-        type="date"
         value={values.kickoffDate || ''}
-        onChange={update('kickoffDate')}
-        fullWidth
+        onChange={(ymd) => onChange('kickoffDate', ymd)}
         disabled={disabled}
-        InputLabelProps={{ shrink: true }}
         error={Boolean(fieldErrors.kickoffDate)}
         helperText={
           fieldErrors.kickoffDate ||
-          'Earliest you’ll start; deposit can be paid earlier. Leave blank if flexible.'
+          'Earliest you’ll start; deposit can be paid earlier. Clear if flexible.'
         }
-        sx={fieldSx}
       />
       <TextField
         select

@@ -70,6 +70,9 @@ export function inquiryTypeChipSx(type) {
   return type === 'contact' ? TONE.contactType : TONE.projectType;
 }
 
+/** Shared package chip style (admin linked cards, detail ChipFields, portal). */
+export const packageChipSx = TONE.projectType;
+
 /** Design payment status (`unpaid` | `partial` | `paid`). */
 export function designPaymentChipSx(status) {
   if (status === 'paid') return TONE.active;

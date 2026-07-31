@@ -1,12 +1,18 @@
 import { sitePackages } from "./pricing";
 import { DEFAULT_PAYMENT_SCHEDULE } from "./paymentSchedules";
 import { DEFAULT_HOSTING_PLAN, resolveHostingPlan } from "./hostingPlans";
+import dayjs from "dayjs";
 
 const PACKAGE_CENTS = {
   starter: 90000,
   business: 150000,
   growth: 300000,
 };
+
+/** Local calendar date as YYYY-MM-DD for new proposal kickoff defaults. */
+export function todayYmd() {
+  return dayjs().format("YYYY-MM-DD");
+}
 
 function centsToDollarsInput(cents) {
   if (cents === null || cents === undefined) return "";
@@ -191,7 +197,8 @@ export function seedProposalFormFromInquiry(inquiry) {
     deliverables: defaults.deliverables || "",
     exclusions: defaults.exclusions || "",
     timelineSummary: defaults.timelineSummary || "",
-    kickoffDate: "",
+    kickoffDate: todayYmd(),
+    packageSlug: inquiry?.packageSlug || "not-sure",
     paymentSchedule: defaults.paymentSchedule || DEFAULT_PAYMENT_SCHEDULE,
     revisionLimit:
       defaults.revisionLimit === null || defaults.revisionLimit === undefined
