@@ -21,12 +21,19 @@ function formatMoney(cents, currency = 'usd') {
 }
 
 function mapAttachmentMeta(row) {
+  const uploadedBy = row.uploaded_by === 'admin' ? 'admin' : 'client';
+  const clientVisible =
+    row.client_visible === undefined || row.client_visible === null
+      ? true
+      : Boolean(row.client_visible);
   return {
     id: row.id,
     originalName: row.original_name,
     mimeType: row.mime_type,
     sizeBytes: row.size_bytes,
     createdAt: toIsoUtc(row.created_at),
+    uploadedBy,
+    clientVisible,
   };
 }
 

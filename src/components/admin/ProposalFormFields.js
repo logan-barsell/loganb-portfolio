@@ -63,7 +63,10 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         minRows={2}
         disabled={disabled}
         error={Boolean(fieldErrors.summary)}
-        helperText={fieldErrors.summary || 'Short pitch: outcome and who it’s for.'}
+        helperText={
+          fieldErrors.summary ||
+          'Short pitch: outcome and who it’s for. Ask: what’s the main goal of the site?'
+        }
         sx={fieldSx}
       />
       <TextField
@@ -75,7 +78,10 @@ const ProposalFormFields = ({ values, fieldErrors = {}, onChange, disabled = fal
         minRows={4}
         disabled={disabled}
         error={Boolean(fieldErrors.scope)}
-        helperText={fieldErrors.scope || 'What work you’re doing (the engagement).'}
+        helperText={
+          fieldErrors.scope ||
+          'Engagement boundaries: pages, features, and content rules. Ask: which pages and features are in?'
+        }
         sx={fieldSx}
       />
       <TextField

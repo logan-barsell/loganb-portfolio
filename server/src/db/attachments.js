@@ -1,14 +1,19 @@
 const { getDb } = require('./client');
 
-function insertAttachments(inquiryId, files) {
+function insertAttachments(inquiryId, files, options = {}) {
   if (!files || files.length === 0) return [];
+
+  const uploadedBy = options.uploadedBy === 'admin' ? 'admin' : 'client';
+  const clientVisible = options.clientVisible === false ? 0 : 1;
 
   const database = getDb();
   const stmt = database.prepare(`
     INSERT INTO attachments (
-      id, inquiry_id, original_name, stored_name, mime_type, size_bytes
+      id, inquiry_id, original_name, stored_name, mime_type, size_bytes,
+      uploaded_by, client_visible
     ) VALUES (
-      @id, @inquiry_id, @original_name, @stored_name, @mime_type, @size_bytes
+      @id, @inquiry_id, @original_name, @stored_name, @mime_type, @size_bytes,
+      @uploaded_by, @client_visible
     )
   `);
 
@@ -22,6 +27,8 @@ function insertAttachments(inquiryId, files) {
         stored_name: file.storedName,
         mime_type: file.mimeType,
         size_bytes: file.sizeBytes,
+        uploaded_by: uploadedBy,
+        client_visible: clientVisible,
       });
       saved.push(file);
     }
@@ -38,6 +45,17 @@ function listAttachmentsForInquiry(inquiryId, database = getDb()) {
     .all(inquiryId);
 }
 
+function listClientVisibleAttachmentsForInquiry(inquiryId, database = getDb()) {
+  if (!inquiryId) return [];
+  return database
+    .prepare(
+      `SELECT * FROM attachments
+       WHERE inquiry_id = ? AND IFNULL(client_visible, 1) = 1
+       ORDER BY created_at ASC`
+    )
+    .all(inquiryId);
+}
+
 function getAdminAttachment(inquiryId, attachmentId) {
   return getDb()
     .prepare(
@@ -47,6 +65,17 @@ function getAdminAttachment(inquiryId, attachmentId) {
        WHERE a.inquiry_id = ? AND a.id = ?`
     )
     .get(inquiryId, attachmentId);
+}
+
+function updateAttachmentClientVisible(attachmentId, clientVisible, database = getDb()) {
+  const existing = database.prepare('SELECT * FROM attachments WHERE id = ?').get(attachmentId);
+  if (!existing) return null;
+
+  database
+    .prepare(`UPDATE attachments SET client_visible = ? WHERE id = ?`)
+    .run(clientVisible ? 1 : 0, attachmentId);
+
+  return database.prepare('SELECT * FROM attachments WHERE id = ?').get(attachmentId);
 }
 
 function deleteAttachmentById(attachmentId, database = getDb()) {
@@ -59,6 +88,8 @@ function deleteAttachmentById(attachmentId, database = getDb()) {
 module.exports = {
   insertAttachments,
   listAttachmentsForInquiry,
+  listClientVisibleAttachmentsForInquiry,
   getAdminAttachment,
+  updateAttachmentClientVisible,
   deleteAttachmentById,
 };

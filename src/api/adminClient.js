@@ -239,4 +239,40 @@ export async function fetchAttachmentPreview(inquiryId, attachmentId) {
   return response.blob();
 }
 
+export async function uploadInquiryAttachments(inquiryId, files, { clientVisible = true } = {}) {
+  const formData = new FormData();
+  Array.from(files || []).forEach((file) => {
+    formData.append('files', file);
+  });
+  formData.append('clientVisible', clientVisible ? '1' : '0');
+  return adminRequest(
+    `/api/admin/inquiries/${encodeURIComponent(inquiryId)}/attachments`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+}
+
+export async function updateInquiryAttachmentVisibility(inquiryId, attachmentId, clientVisible) {
+  return adminRequest(
+    `/api/admin/inquiries/${encodeURIComponent(inquiryId)}/attachments/${encodeURIComponent(
+      attachmentId
+    )}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ clientVisible: Boolean(clientVisible) }),
+    }
+  );
+}
+
+export async function deleteInquiryAttachment(inquiryId, attachmentId) {
+  return adminRequest(
+    `/api/admin/inquiries/${encodeURIComponent(inquiryId)}/attachments/${encodeURIComponent(
+      attachmentId
+    )}`,
+    { method: 'DELETE' }
+  );
+}
+
 export { buildQuery, GENERIC_SERVER_ERROR };

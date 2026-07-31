@@ -15,6 +15,7 @@ import { formatBytes, previewableMimeTypes } from './attachmentUtils';
  *   emptyMessage?: string,
  *   fetchPreview: (file: object) => Promise<Blob>,
  *   downloadUrl: (file: object) => string,
+ *   renderMeta?: (file: object) => React.ReactNode,
  *   renderActions?: (file: object) => React.ReactNode,
  * }} props
  */
@@ -23,6 +24,7 @@ const AttachmentList = ({
   emptyMessage = 'No attachments.',
   fetchPreview,
   downloadUrl,
+  renderMeta,
   renderActions,
 }) => {
   const toast = useToast();
@@ -84,8 +86,9 @@ const AttachmentList = ({
                 <Typography sx={{ color: colors.muted, fontSize: 13 }}>
                   {file.mimeType} · {formatBytes(file.sizeBytes)}
                 </Typography>
+                {renderMeta ? renderMeta(file) : null}
               </Box>
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 {previewableMimeTypes.has(file.mimeType) ? (
                   <Button
                     onClick={() => openPreview(file)}

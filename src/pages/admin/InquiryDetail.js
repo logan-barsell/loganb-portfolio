@@ -232,7 +232,13 @@ const InquiryDetail = () => {
 
             {inquiry.type === 'project' ? (
               <DetailSection title="Attachments">
-                <InquiryAttachments inquiryId={inquiry.id} attachments={inquiry.attachments} />
+                <InquiryAttachments
+                  inquiryId={inquiry.id}
+                  attachments={inquiry.attachments}
+                  onAttachmentsChange={(attachments) => {
+                    setInquiry((prev) => (prev ? { ...prev, attachments } : prev));
+                  }}
+                />
               </DetailSection>
             ) : null}
 

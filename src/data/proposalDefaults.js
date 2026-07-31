@@ -19,6 +19,25 @@ function centsToDollarsInput(cents) {
   return (Number(cents) / 100).toFixed(2).replace(/\.00$/, "");
 }
 
+const CONTENT_OWNERSHIP = [
+  "Client provides final copy, logo, photos, and domain access.",
+  "If materials are missing, the site may use placeholder text and stock or AI imagery so work can continue; placeholders are temporary fill and are not guaranteed to match final preferences.",
+  "Final content is the client’s responsibility—either supply what you want or accept the placeholders used.",
+].join(" ");
+
+const PLACEHOLDER_DELIVERABLE =
+  "Client-provided content and assets incorporated when supplied; placeholders used where needed";
+
+function withContentOwnership(scope) {
+  return `${scope}\n\n${CONTENT_OWNERSHIP}`;
+}
+
+function withPlaceholderDeliverable(lines) {
+  const list = Array.isArray(lines) ? lines : String(lines || "").split("\n").filter(Boolean);
+  if (list.includes(PLACEHOLDER_DELIVERABLE)) return list.join("\n");
+  return [...list, PLACEHOLDER_DELIVERABLE].join("\n");
+}
+
 const SHARED_EXCLUSIONS = [
   "Copywriting and content writing",
   "Logo design or full brand identity",
@@ -28,22 +47,24 @@ const SHARED_EXCLUSIONS = [
   "Ongoing SEO campaigns or content marketing",
   "Unlimited revision rounds beyond the included revision limit",
   "Content entry beyond the agreed page set",
+  "Items not listed in Scope or Deliverables",
 ].join("\n");
 
 const FALLBACK_DEFAULTS = {
   summary: "Custom website proposal tailored to your business goals.",
-  scope:
-    "Design and build a custom marketing website based on your goals, branding direction, and agreed page set. Includes responsive layout, core pages, contact paths, and launch support.",
-  deliverables: [
+  scope: withContentOwnership(
+    "Design and build a custom marketing website based on your goals, branding direction, and the page set listed in Deliverables. Includes responsive layout, core pages, contact paths, and launch support."
+  ),
+  deliverables: withPlaceholderDeliverable([
     "Custom website design and build",
     "Mobile-responsive layout",
     "Agreed core business pages",
     "Contact form and primary calls-to-action",
     "Basic SEO setup",
     "Launch support",
-  ].join("\n"),
+  ]),
   exclusions: SHARED_EXCLUSIONS,
-  timelineSummary: "3–4 weeks after kickoff and content handoff",
+  timelineSummary: "3–4 weeks after kickoff and content/access handoff",
   revisionLimit: 2,
   paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
   designAmountCents: null,
@@ -55,13 +76,14 @@ const PACKAGE_DEFAULTS = {
   starter: {
     summary:
       "A focused Starter Website that establishes your online presence with a clear set of core pages and a professional first impression.",
-    scope:
-      "Design and build a custom starter brochure-style website. Includes responsive layout for desktop, tablet, and mobile; Home, About, Services, Gallery or Portfolio, and Contact pages; contact form; Google Maps; social links; basic on-page SEO; performance optimization; and launch support.",
-    deliverables: (
+    scope: withContentOwnership(
+      "Design and build a custom starter brochure-style website. Includes responsive layout for desktop, tablet, and mobile; pages listed in Deliverables (typically Home, About, Services, Gallery or Portfolio, and Contact); contact form; Google Maps; social links; basic on-page SEO; performance optimization; and launch support."
+    ),
+    deliverables: withPlaceholderDeliverable(
       sitePackages.find((p) => p.id === "starter")?.highlights || []
-    ).join("\n"),
+    ),
     exclusions: `${SHARED_EXCLUSIONS}\nAdvanced integrations or custom application features`,
-    timelineSummary: "2–3 weeks after kickoff and content handoff",
+    timelineSummary: "2–3 weeks after kickoff and content/access handoff",
     revisionLimit: 2,
     paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
     designAmountCents: PACKAGE_CENTS.starter,
@@ -71,13 +93,14 @@ const PACKAGE_DEFAULTS = {
   business: {
     summary:
       "A Growth Website built to generate leads, showcase your services in depth, and streamline customer interactions.",
-    scope:
-      "Design and build a custom Growth Website that includes everything in Starter, plus expanded site architecture, individual service pages, reviews and testimonials, FAQ, booking or scheduling and online payment integrations as scoped, lead capture improvements, analytics setup, enhanced SEO structure, and additional third-party integrations.",
-    deliverables: (
+    scope: withContentOwnership(
+      "Design and build a custom Growth Website that includes everything in Starter, plus expanded site architecture, individual service pages, reviews and testimonials, FAQ, booking or scheduling and online payment integrations as scoped, lead capture improvements, analytics setup, enhanced SEO structure, and additional third-party integrations. Agreed pages and features are listed in Deliverables."
+    ),
+    deliverables: withPlaceholderDeliverable(
       sitePackages.find((p) => p.id === "business")?.highlights || []
-    ).join("\n"),
+    ),
     exclusions: SHARED_EXCLUSIONS,
-    timelineSummary: "3–4 weeks after kickoff and content handoff",
+    timelineSummary: "3–4 weeks after kickoff and content/access handoff",
     revisionLimit: 2,
     paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
     designAmountCents: PACKAGE_CENTS.business,
@@ -87,13 +110,14 @@ const PACKAGE_DEFAULTS = {
   growth: {
     summary:
       "A Custom Web Application tailored to your business—from client portals and admin tools to workflow automation and SaaS-style platforms.",
-    scope:
-      "Design and build custom software based on your requirements. Scope may include authentication, dashboards, client portals, custom databases, workflow automation, API integrations, analytics and reporting, and other agreed application features. Exact deliverables are confirmed in this proposal before work begins.",
-    deliverables: (
+    scope: withContentOwnership(
+      "Design and build custom software based on your requirements. Scope may include authentication, dashboards, client portals, custom databases, workflow automation, API integrations, analytics and reporting, and other agreed application features listed in Deliverables. Exact deliverables are confirmed in this proposal before work begins."
+    ),
+    deliverables: withPlaceholderDeliverable(
       sitePackages.find((p) => p.id === "growth")?.highlights || []
-    ).join("\n"),
-    exclusions: `${SHARED_EXCLUSIONS}\nFeatures or integrations not listed in Scope / Deliverables`,
-    timelineSummary: "4–8 weeks after kickoff and requirements lock, depending on complexity",
+    ),
+    exclusions: SHARED_EXCLUSIONS,
+    timelineSummary: "4–8 weeks after kickoff and content/access handoff, depending on complexity",
     revisionLimit: 3,
     paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
     designAmountCents: PACKAGE_CENTS.growth,
@@ -103,18 +127,19 @@ const PACKAGE_DEFAULTS = {
   redesign: {
     summary:
       "A website redesign proposal focused on improving your existing site’s structure, design, and conversion paths.",
-    scope:
-      "Redesign and rebuild your existing website based on your current content, goals, and agreed page set. Includes updated visual design, improved information architecture, mobile-responsive layout, and launch support. Exact page count and feature set confirmed after review.",
-    deliverables: [
+    scope: withContentOwnership(
+      "Redesign and rebuild your existing website based on your current content, goals, and the page set listed in Deliverables. Includes updated visual design, improved information architecture, mobile-responsive layout, and launch support."
+    ),
+    deliverables: withPlaceholderDeliverable([
       "Custom redesign of agreed pages",
       "Mobile-responsive layout",
       "Improved navigation and calls-to-action",
       "Content migration for agreed pages",
       "Basic SEO setup",
       "Launch support",
-    ].join("\n"),
+    ]),
     exclusions: SHARED_EXCLUSIONS,
-    timelineSummary: "3–5 weeks after kickoff and content handoff",
+    timelineSummary: "3–5 weeks after kickoff and content/access handoff",
     revisionLimit: 2,
     paymentSchedule: DEFAULT_PAYMENT_SCHEDULE,
     designAmountCents: null,
@@ -125,8 +150,9 @@ const PACKAGE_DEFAULTS = {
     ...FALLBACK_DEFAULTS,
     summary:
       "A custom website proposal scoped to your specific goals, features, and constraints.",
-    scope:
-      "Custom website design and development based on the requirements discussed. Scope, pages, and features will be confirmed in this proposal before work begins.",
+    scope: withContentOwnership(
+      "Custom website design and development based on the requirements discussed. Scope, pages, and features listed in Deliverables are confirmed in this proposal before work begins."
+    ),
   },
   hosting: {
     summary: "Managed Hosting + Support for your website.",

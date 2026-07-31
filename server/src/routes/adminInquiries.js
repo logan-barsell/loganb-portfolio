@@ -11,11 +11,16 @@ const {
   getProjectForInquiry,
   markInquiryContacted,
   getInquiryWithAttachments,
+  insertAttachments,
+  deleteAttachmentById,
+  listAttachmentsForInquiry,
+  updateAttachmentClientVisible,
 } = require('../db');
 const { requireAdmin } = require('../middleware/requireAdmin');
-const { setNoStore } = require('../services/auth/cookies');
+const { setNoStore, requireSameOrigin } = require('../services/auth/cookies');
 const { createHttpError } = require('../utils/normalize');
 const { toIsoUtc, mapAttachmentMeta } = require('../lib/format');
+const { upload, mapUploadedFiles, removeFiles } = require('../utils/uploads');
 
 const router = express.Router();
 
@@ -194,6 +199,97 @@ router.post('/:id/mark-contacted', (req, res, next) => {
     return next(error);
   }
 });
+
+router.post(
+  '/:id/attachments',
+  requireSameOrigin,
+  (req, res, next) => {
+    upload.array('files', 5)(req, res, (err) => {
+      if (err) return next(err);
+      return next();
+    });
+  },
+  (req, res, next) => {
+    let mapped = [];
+    try {
+      const inquiry = getAdminInquiryById(req.params.id);
+      if (!inquiry) {
+        throw createHttpError(404, 'Inquiry not found.', 'NOT_FOUND');
+      }
+
+      mapped = mapUploadedFiles(req.files || []);
+      if (!mapped.length) {
+        throw createHttpError(400, 'Choose at least one file to upload.', 'VALIDATION_ERROR');
+      }
+
+      const rawVisible = req.body?.clientVisible;
+      const clientVisible =
+        rawVisible === undefined || rawVisible === null || rawVisible === ''
+          ? true
+          : !['0', 'false', 'no', 'off'].includes(String(rawVisible).toLowerCase());
+
+      insertAttachments(req.params.id, mapped, {
+        uploadedBy: 'admin',
+        clientVisible,
+      });
+
+      const attachments = listAttachmentsForInquiry(req.params.id).map(mapAttachmentMeta);
+      return res.status(200).json({ ok: true, attachments });
+    } catch (error) {
+      removeFiles(mapped.length ? mapped : req.files || []);
+      return next(error);
+    }
+  }
+);
+
+router.patch(
+  '/:id/attachments/:attachmentId',
+  requireSameOrigin,
+  express.json({ limit: '8kb' }),
+  (req, res, next) => {
+    try {
+      const attachment = getAdminAttachment(req.params.id, req.params.attachmentId);
+      if (!attachment) {
+        throw createHttpError(404, 'Attachment not found.', 'NOT_FOUND');
+      }
+
+      if (req.body?.clientVisible === undefined) {
+        throw createHttpError(400, 'clientVisible is required.', 'VALIDATION_ERROR');
+      }
+
+      const clientVisible = Boolean(req.body.clientVisible);
+      updateAttachmentClientVisible(attachment.id, clientVisible);
+
+      const attachments = listAttachmentsForInquiry(req.params.id).map(mapAttachmentMeta);
+      return res.status(200).json({ ok: true, attachments });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.delete(
+  '/:id/attachments/:attachmentId',
+  requireSameOrigin,
+  (req, res, next) => {
+    try {
+      const attachment = getAdminAttachment(req.params.id, req.params.attachmentId);
+      if (!attachment) {
+        throw createHttpError(404, 'Attachment not found.', 'NOT_FOUND');
+      }
+
+      const deleted = deleteAttachmentById(attachment.id);
+      if (deleted?.stored_name) {
+        removeFiles([{ storedName: deleted.stored_name }]);
+      }
+
+      const attachments = listAttachmentsForInquiry(req.params.id).map(mapAttachmentMeta);
+      return res.status(200).json({ ok: true, attachments });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 router.get('/:id/attachments/:attachmentId', (req, res, next) => {
   try {

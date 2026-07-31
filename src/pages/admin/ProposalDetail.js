@@ -509,6 +509,9 @@ const ProposalDetail = () => {
               <InquiryAttachments
                 inquiryId={proposal.inquiryId || proposal.inquiry?.id}
                 attachments={proposal.attachments}
+                onAttachmentsChange={(attachments) => {
+                  setProposal((prev) => (prev ? { ...prev, attachments } : prev));
+                }}
               />
             </DetailBlock>
 

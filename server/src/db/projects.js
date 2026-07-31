@@ -46,25 +46,37 @@ function getProjectById(id, database = getDb()) {
   return database.prepare(`SELECT * FROM projects WHERE id = ?`).get(id);
 }
 
-function updateProjectDomain(projectId, { domainName, domainStatus }, database = getDb()) {
+function updateProjectFields(
+  projectId,
+  { domainName, domainStatus, workingBrief } = {},
+  database = getDb()
+) {
   const existing = getProjectById(projectId, database);
   if (!existing) return null;
 
   const nextName = domainName !== undefined ? domainName : existing.domain_name;
   const nextStatus =
     domainStatus !== undefined ? domainStatus : existing.domain_status || 'unknown';
+  const nextBrief =
+    workingBrief !== undefined ? workingBrief : existing.working_brief;
 
   database
     .prepare(
       `UPDATE projects SET
          domain_name = ?,
          domain_status = ?,
+         working_brief = ?,
          updated_at = datetime('now')
        WHERE id = ?`
     )
-    .run(nextName || null, nextStatus || 'unknown', projectId);
+    .run(nextName || null, nextStatus || 'unknown', nextBrief || null, projectId);
 
   return getProjectById(projectId, database);
+}
+
+/** @deprecated Prefer updateProjectFields */
+function updateProjectDomain(projectId, patch, database = getDb()) {
+  return updateProjectFields(projectId, patch, database);
 }
 
 function getProjectByProposalId(proposalId, database = getDb()) {
@@ -197,7 +209,8 @@ function getAdminProjectById(id, database = getDb()) {
          p.created_at, p.updated_at,
          p.portal_password_hash, p.portal_setup_token_hash, p.portal_setup_expires_at,
          p.portal_password_set_at,
-         p.domain_name, p.domain_status, p.design_payment_status, p.hosting_status,
+         p.domain_name, p.domain_status, p.working_brief,
+         p.design_payment_status, p.hosting_status,
          p.stripe_subscription_id, p.started_at, p.started_by,
          p.ready_for_launch_at,
          p.stripe_hosting_price_id, p.hosting_cancel_at_period_end,
@@ -239,6 +252,7 @@ function getAdminProjectById(id, database = getDb()) {
 module.exports = {
   createProject,
   getProjectById,
+  updateProjectFields,
   updateProjectDomain,
   getProjectByProposalId,
   getProjectForInquiry,

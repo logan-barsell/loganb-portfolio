@@ -8,7 +8,7 @@ const {
   getPortalProjectBundle,
   insertAttachments,
   deleteAttachmentById,
-  listAttachmentsForInquiry,
+  listClientVisibleAttachmentsForInquiry,
   getAdminAttachment,
   updateProjectDomain,
 } = require('../db');
@@ -275,8 +275,13 @@ router.post(
         throw createHttpError(400, 'Choose at least one file to upload.', 'VALIDATION_ERROR');
       }
 
-      insertAttachments(bundle.project.inquiry_id, mapped);
-      const attachments = listAttachmentsForInquiry(bundle.project.inquiry_id).map(mapAttachmentMeta);
+      insertAttachments(bundle.project.inquiry_id, mapped, {
+        uploadedBy: 'client',
+        clientVisible: true,
+      });
+      const attachments = listClientVisibleAttachmentsForInquiry(bundle.project.inquiry_id).map(
+        mapAttachmentMeta
+      );
       return res.status(200).json({ ok: true, attachments });
     } catch (error) {
       removeFiles(mapped.length ? mapped : req.files || []);
@@ -293,7 +298,11 @@ router.delete('/:id/attachments/:attachmentId', requireClientProject, (req, res,
     }
 
     const attachment = getAdminAttachment(bundle.project.inquiry_id, req.params.attachmentId);
-    if (!attachment) {
+    if (
+      !attachment ||
+      !attachment.client_visible ||
+      attachment.uploaded_by === 'admin'
+    ) {
       throw createHttpError(404, 'Attachment not found.', 'NOT_FOUND');
     }
 
@@ -302,7 +311,9 @@ router.delete('/:id/attachments/:attachmentId', requireClientProject, (req, res,
       removeFiles([{ storedName: deleted.stored_name }]);
     }
 
-    const attachments = listAttachmentsForInquiry(bundle.project.inquiry_id).map(mapAttachmentMeta);
+    const attachments = listClientVisibleAttachmentsForInquiry(bundle.project.inquiry_id).map(
+      mapAttachmentMeta
+    );
     return res.status(200).json({ ok: true, attachments });
   } catch (error) {
     return next(error);
@@ -317,7 +328,7 @@ router.get('/:id/attachments/:attachmentId', requireClientProject, (req, res, ne
     }
 
     const attachment = getAdminAttachment(bundle.project.inquiry_id, req.params.attachmentId);
-    if (!attachment) {
+    if (!attachment || !attachment.client_visible) {
       throw createHttpError(404, 'Attachment not found.', 'NOT_FOUND');
     }
 

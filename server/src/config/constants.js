@@ -303,6 +303,7 @@ const LIMITS = {
   proposalEmailMessage: 5000,
   proposalRevisionMessage: 4000,
   proposalDeclineReason: 2000,
+  workingBrief: 12000,
 };
 
 module.exports = {

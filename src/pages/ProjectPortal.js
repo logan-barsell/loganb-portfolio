@@ -270,14 +270,16 @@ function PortalAttachments({ projectId, attachments, onChange }) {
         attachments={attachments}
         fetchPreview={(file) => fetchPortalAttachmentPreview(projectId, file.id)}
         downloadUrl={(file) => portalAttachmentDownloadUrl(projectId, file.id)}
-        renderActions={(file) => (
-          <Button
-            onClick={() => handleDelete(file)}
-            sx={{ color: colors.muted, textTransform: 'none' }}
-          >
-            Remove
-          </Button>
-        )}
+        renderActions={(file) =>
+          file.uploadedBy !== 'admin' ? (
+            <Button
+              onClick={() => handleDelete(file)}
+              sx={{ color: colors.muted, textTransform: 'none' }}
+            >
+              Remove
+            </Button>
+          ) : null
+        }
       />
     </Stack>
   );

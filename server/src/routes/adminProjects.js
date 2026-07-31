@@ -25,7 +25,7 @@ const {
   listAdminProjects,
   getAdminProjectById,
   listAttachmentsForInquiry,
-  updateProjectDomain,
+  updateProjectFields,
 } = require('../db');
 const {
   listInvoicesForProject,
@@ -124,6 +124,7 @@ function mapProjectDetail(row) {
     domainName: row.domain_name || null,
     domainStatus: row.domain_status || 'unknown',
     domainStatusLabel: DOMAIN_STATUS_LABELS[row.domain_status] || row.domain_status,
+    workingBrief: row.working_brief || null,
     startedAt: toIsoUtc(row.started_at),
     startedBy: row.started_by || null,
     readyForLaunch: Boolean(row.ready_for_launch_at),
@@ -273,7 +274,7 @@ router.get('/:id', async (req, res, next) => {
 router.patch(
   '/:id',
   requireSameOrigin,
-  express.json({ limit: '16kb' }),
+  express.json({ limit: '32kb' }),
   (req, res, next) => {
     try {
       const existing = getAdminProjectById(req.params.id);
@@ -295,13 +296,19 @@ router.patch(
           patch.domainStatus = status;
         }
       }
+      if (req.body?.workingBrief !== undefined) {
+        patch.workingBrief = enforceMaxLength(
+          trimToNull(req.body.workingBrief),
+          LIMITS.workingBrief
+        );
+      }
 
       if (Object.keys(errors).length) {
         throw createHttpError(400, 'Please fix the highlighted fields.', 'VALIDATION_ERROR', errors);
       }
 
       if (Object.keys(patch).length) {
-        updateProjectDomain(req.params.id, patch);
+        updateProjectFields(req.params.id, patch);
       }
 
       const refreshed = getAdminProjectById(req.params.id);

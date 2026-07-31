@@ -180,12 +180,16 @@ const ProjectDetail = () => {
   const [domainStatus, setDomainStatus] = useState('unknown');
   const [domainSaving, setDomainSaving] = useState(false);
   const [editingDomain, setEditingDomain] = useState(false);
+  const [workingBrief, setWorkingBrief] = useState('');
+  const [briefSaving, setBriefSaving] = useState(false);
+  const [editingBrief, setEditingBrief] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       setEditingDomain(false);
+      setEditingBrief(false);
       try {
         const data = await fetchProject(id);
         if (!cancelled) setProject(data.project);
@@ -209,6 +213,11 @@ const ProjectDetail = () => {
     setDomainStatus(project.domainStatus || 'unknown');
   }, [project, editingDomain]);
 
+  useEffect(() => {
+    if (!project || editingBrief) return;
+    setWorkingBrief(project.workingBrief || '');
+  }, [project, editingBrief]);
+
   const startEditingDomain = () => {
     if (!project) return;
     setDomainName(project.domainName || '');
@@ -223,6 +232,20 @@ const ProjectDetail = () => {
       setDomainStatus(project.domainStatus || 'unknown');
     }
     setEditingDomain(false);
+  };
+
+  const startEditingBrief = () => {
+    if (!project) return;
+    setWorkingBrief(project.workingBrief || '');
+    setEditingBrief(true);
+  };
+
+  const cancelEditingBrief = () => {
+    if (briefSaving) return;
+    if (project) {
+      setWorkingBrief(project.workingBrief || '');
+    }
+    setEditingBrief(false);
   };
 
   const closeResendModal = () => {
@@ -320,6 +343,23 @@ const ProjectDetail = () => {
       toast.error(err.message || 'Failed to save domain.');
     } finally {
       setDomainSaving(false);
+    }
+  };
+
+  const saveWorkingBrief = async () => {
+    if (briefSaving) return;
+    setBriefSaving(true);
+    try {
+      const data = await updateProject(id, {
+        workingBrief: workingBrief.trim() || null,
+      });
+      setProject(data.project);
+      setEditingBrief(false);
+      toast.success('Working brief saved.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save working brief.');
+    } finally {
+      setBriefSaving(false);
     }
   };
 
@@ -585,6 +625,55 @@ const ProjectDetail = () => {
               )}
             </DetailBlock>
 
+            <DetailBlock
+              title="Working Brief"
+              action={
+                !editingBrief ? (
+                  <CtaButton type="button" size="medium" onClick={startEditingBrief}>
+                    Edit
+                  </CtaButton>
+                ) : null
+              }
+            >
+              {editingBrief ? (
+                <Stack spacing={2}>
+                  <TextField
+                    label="Working Brief"
+                    value={workingBrief}
+                    onChange={(e) => setWorkingBrief(e.target.value)}
+                    fullWidth
+                    multiline
+                    minRows={6}
+                    helperText="Sitemap notes, copy status, design decisions, open questions—editable anytime. Not shown to the client."
+                    disabled={briefSaving}
+                    sx={fieldSx}
+                  />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                    <CtaButton size="medium" onClick={saveWorkingBrief} disabled={briefSaving}>
+                      {briefSaving ? 'Saving…' : 'Save'}
+                    </CtaButton>
+                    <CtaButton
+                      type="button"
+                      size="medium"
+                      secondary
+                      onClick={cancelEditingBrief}
+                      disabled={briefSaving}
+                    >
+                      Cancel
+                    </CtaButton>
+                  </Stack>
+                </Stack>
+              ) : project.workingBrief ? (
+                <Typography
+                  sx={{ color: colors.text, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                >
+                  {project.workingBrief}
+                </Typography>
+              ) : (
+                <Typography sx={{ color: colors.muted }}>No working brief yet.</Typography>
+              )}
+            </DetailBlock>
+
             <DetailBlock title="Project Overview">
               {packageLabel ? (
                 <ChipField label="Package" chipLabel={packageLabel} chipSx={packageChipSx} />
@@ -751,6 +840,9 @@ const ProjectDetail = () => {
               <InquiryAttachments
                 inquiryId={project.inquiryId || project.inquiry?.id}
                 attachments={project.attachments}
+                onAttachmentsChange={(attachments) => {
+                  setProject((prev) => (prev ? { ...prev, attachments } : prev));
+                }}
               />
             </DetailBlock>
           </>

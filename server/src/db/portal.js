@@ -1,7 +1,7 @@
 const { createHash, randomBytes } = require('crypto');
 const { config } = require('../config');
 const { getDb } = require('./client');
-const { listAttachmentsForInquiry } = require('./attachments');
+const { listClientVisibleAttachmentsForInquiry } = require('./attachments');
 
 function hashPortalSetupToken(rawToken) {
   return createHash('sha256').update(String(rawToken)).digest('hex');
@@ -143,7 +143,7 @@ function getPortalProjectBundle(projectId, database = getDb()) {
     : null;
 
   const attachments = project.inquiry_id
-    ? listAttachmentsForInquiry(project.inquiry_id, database)
+    ? listClientVisibleAttachmentsForInquiry(project.inquiry_id, database)
     : [];
 
   return { project, client, inquiry, proposal, attachments };
