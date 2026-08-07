@@ -24,6 +24,7 @@ server/.admin-local-password
 .env.development.local
 .env.test.local
 .env.production.local
+deploy-artifacts/
 
 # server runtime data
 server/data/

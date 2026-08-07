@@ -10,7 +10,6 @@ jobs:
 
     steps:
     - name: Prepare production env file
-      id: prep_env
       env:
         RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         RESEND_FROM: ${{ secrets.RESEND_FROM }}
@@ -49,7 +48,20 @@ jobs:
         require_env STRIPE_HOSTING_PRICE_ID_25
         require_env STRIPE_HOSTING_PRICE_ID_10
 
-        ENV_TMP="$(mktemp)"
+        # Secret values should be unquoted; strip accidental wrapping quotes.
+        strip_quotes() {
+          local v="$1"
+          if [[ "$v" == \"*\" ]]; then
+            v="${v:1:${#v}-2}"
+          fi
+          printf '%s' "$v"
+        }
+
+        RESEND_FROM="$(strip_quotes "$RESEND_FROM")"
+
+        mkdir -p deploy-artifacts
+        ENV_FILE="$GITHUB_WORKSPACE/deploy-artifacts/loganb-api.env"
+        umask 077
         {
           printf '%s\n' 'NODE_ENV=production'
           printf '%s\n' 'HOST=127.0.0.1'
@@ -85,39 +97,55 @@ jobs:
           printf 'STRIPE_HOSTING_PRICE_ID_39=%s\n' "$STRIPE_HOSTING_PRICE_ID_39"
           printf 'STRIPE_HOSTING_PRICE_ID_25=%s\n' "$STRIPE_HOSTING_PRICE_ID_25"
           printf 'STRIPE_HOSTING_PRICE_ID_10=%s\n' "$STRIPE_HOSTING_PRICE_ID_10"
-        } > "$ENV_TMP"
+        } > "$ENV_FILE"
+        chmod 600 "$ENV_FILE"
 
-        {
-          echo "env_b64<<EOF"
-          base64 -w0 "$ENV_TMP"
-          echo
-          echo "EOF"
-        } >> "$GITHUB_OUTPUT"
-        rm -f "$ENV_TMP"
+        # Sanity check without printing secret values
+        grep -q '^RESEND_API_KEY=.' "$ENV_FILE"
+        grep -q '^ADMIN_PASSWORD_HASH=.' "$ENV_FILE"
+        grep -q '^STRIPE_SECRET_KEY=.' "$ENV_FILE"
+        echo "Prepared env file ($(wc -c < "$ENV_FILE") bytes)"
 
-    - name: Deploy NodeJS app
+    - name: Copy env file to droplet
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        key: ${{ secrets.SSH_KEY }}
+        username: ${{ secrets.SSH_USERNAME }}
+        fingerprint: ${{ secrets.SSH_HOST_FINGERPRINT }}
+        source: deploy-artifacts/loganb-api.env
+        target: /tmp/
+        overwrite: true
+
+    - name: Deploy app
       uses: appleboy/ssh-action@v0.1.2
       with:
         host: ${{ secrets.SSH_HOST }}
         key: ${{ secrets.SSH_KEY }}
         username: ${{ secrets.SSH_USERNAME }}
+        fingerprint: ${{ secrets.SSH_HOST_FINGERPRINT }}
         script_stop: true
         command_timeout: 20m
         script: |
           bash -euo pipefail <<'SCRIPT'
-          ENV_TMP="$(mktemp)"
-          trap 'rm -f "$ENV_TMP"' EXIT
+          if [ ! -f /tmp/loganb-api.env ]; then
+            echo "Missing /tmp/loganb-api.env from scp step." >&2
+            exit 1
+          fi
 
-          printf '%s' '${{ steps.prep_env.outputs.env_b64 }}' | base64 -d > "$ENV_TMP"
-          if ! grep -q '^RESEND_API_KEY=.' "$ENV_TMP"; then
-            echo "Decoded env file looks empty or incomplete." >&2
+          chmod 600 /tmp/loganb-api.env
+
+          if ! grep -q '^RESEND_API_KEY=.' /tmp/loganb-api.env; then
+            echo "Copied env file looks incomplete." >&2
             exit 1
           fi
 
           if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
-            sudo install -m 600 -o root -g root "$ENV_TMP" /etc/loganb-api.env
+            sudo install -m 600 -o root -g root /tmp/loganb-api.env /etc/loganb-api.env
+            sudo shred -u /tmp/loganb-api.env 2>/dev/null || sudo rm -f /tmp/loganb-api.env
           else
-            install -m 600 -o root -g root "$ENV_TMP" /etc/loganb-api.env
+            install -m 600 -o root -g root /tmp/loganb-api.env /etc/loganb-api.env
+            shred -u /tmp/loganb-api.env 2>/dev/null || rm -f /tmp/loganb-api.env
           fi
 
           cd /var/www/loganbarsell.com

@@ -82,6 +82,15 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | Secret | Notes |
 |--------|--------|
 | `EMAIL_LOGO_URL` | Absolute logo URL for emails; omit to use `PUBLIC_APP_URL/email-logo.png` |
+| `SSH_HOST_FINGERPRINT` | SHA256 host key fingerprint (MITM protection). Empty = skip verification |
+
+Get the fingerprint from a trusted network (or the droplet console):
+
+```bash
+ssh-keyscan -t ed25519,rsa YOUR_HOST 2>/dev/null | ssh-keygen -lf - -E sha256
+```
+
+Use the `SHA256:…` value (including the `SHA256:` prefix) as `SSH_HOST_FINGERPRINT`.
 
 #### Hardcoded on deploy (not secrets)
 
@@ -144,9 +153,16 @@ sudo systemctl reload nginx
 
 ## Deploy flow
 
-GitHub Actions builds `/etc/loganb-api.env` on the runner from repository secrets (base64 payload), SSHs to the droplet, installs that file, pulls, builds the CRA app, installs server production dependencies, restarts `loganb-api` when the systemd unit exists (migrations run on API startup), checks `/api/health`, and reloads nginx.
+GitHub Actions builds a production env file on the runner from repository secrets (`chmod 600`), copies it to the droplet with SCP, then SSHs to:
 
-Secrets are read on the runner first so they do not depend on SSH `AcceptEnv` / appleboy env forwarding. Never put API secrets in `REACT_APP_*` or any frontend env.
+1. `chmod 600 /tmp/loganb-api.env`
+2. `install` → `/etc/loganb-api.env` (`root:root` `600`)
+3. Shred/remove the temp copy
+4. Pull, build CRA, install server deps, restart `loganb-api` (migrations on startup), health-check, reload nginx
+
+Optional `SSH_HOST_FINGERPRINT` is passed to both SCP and SSH steps. Never put API secrets in `REACT_APP_*` or embed them in the SSH script body (they can appear in Actions logs).
+
+If secrets were ever printed in a failed workflow log, rotate them (Stripe, Resend, session secrets) and update the GitHub secrets before relying on production.
 
 
 ## Admin portal
