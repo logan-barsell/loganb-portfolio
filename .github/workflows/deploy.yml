@@ -48,7 +48,6 @@ jobs:
         require_env STRIPE_HOSTING_PRICE_ID_25
         require_env STRIPE_HOSTING_PRICE_ID_10
 
-        # Secret values should be unquoted; strip accidental wrapping quotes.
         strip_quotes() {
           local v="$1"
           if [[ "$v" == \"*\" ]]; then
@@ -100,18 +99,16 @@ jobs:
         } > "$ENV_FILE"
         chmod 600 "$ENV_FILE"
 
-        # Sanity check without printing secret values
         grep -q '^RESEND_API_KEY=.' "$ENV_FILE"
         grep -q '^ADMIN_PASSWORD_HASH=.' "$ENV_FILE"
         grep -q '^STRIPE_SECRET_KEY=.' "$ENV_FILE"
         echo "Prepared env file ($(wc -c < "$ENV_FILE") bytes)"
 
-    - name: Copy env file to droplet
+    - name: Copy env and deploy
       env:
         SSH_HOST: ${{ secrets.SSH_HOST }}
         SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
         SSH_KEY: ${{ secrets.SSH_KEY }}
-        SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
       run: |
         set -euo pipefail
 
@@ -123,7 +120,6 @@ jobs:
 
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
-        # Keep trailing newline; some keys fail without it
         printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
 
@@ -131,73 +127,58 @@ jobs:
           -i ~/.ssh/deploy_key
           -o IdentitiesOnly=yes
           -o BatchMode=yes
+          -o StrictHostKeyChecking=accept-new
         )
 
-        if [ -n "${SSH_HOST_FINGERPRINT:-}" ]; then
-          ssh-keyscan -t ed25519,rsa "$SSH_HOST" 2>/dev/null > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-          if ! ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk '{print $2}' | grep -Fqx "$SSH_HOST_FINGERPRINT"; then
-            echo "SSH host fingerprint does not match SSH_HOST_FINGERPRINT secret." >&2
-            ssh-keygen -lf ~/.ssh/known_hosts -E sha256 >&2 || true
-            exit 1
-          fi
-          SSH_OPTS+=(-o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o StrictHostKeyChecking=yes)
-        else
-          SSH_OPTS+=(-o StrictHostKeyChecking=accept-new)
-        fi
-
-        # Native scp runs as the runner user, so chmod 600 on the env file is fine
+        echo "Copying env file..."
         scp "${SSH_OPTS[@]}" \
           "$ENV_FILE" \
           "${SSH_USERNAME}@${SSH_HOST}:/tmp/loganb-api.env"
 
-        echo "Copied env file to ${SSH_HOST}:/tmp/loganb-api.env"
+        echo "Installing env and deploying app..."
+        ssh "${SSH_OPTS[@]}" "${SSH_USERNAME}@${SSH_HOST}" bash -s <<'SCRIPT'
+        set -euo pipefail
 
-    - name: Deploy app
-      uses: appleboy/ssh-action@v0.1.2
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        key: ${{ secrets.SSH_KEY }}
-        username: ${{ secrets.SSH_USERNAME }}
-        fingerprint: ${{ secrets.SSH_HOST_FINGERPRINT }}
-        script_stop: true
-        command_timeout: 20m
-        script: |
-          bash -euo pipefail <<'SCRIPT'
-          if [ ! -f /tmp/loganb-api.env ]; then
-            echo "Missing /tmp/loganb-api.env from scp step." >&2
-            exit 1
-          fi
+        if [ ! -f /tmp/loganb-api.env ]; then
+          echo "Missing /tmp/loganb-api.env from scp step." >&2
+          exit 1
+        fi
 
-          chmod 600 /tmp/loganb-api.env
+        chmod 600 /tmp/loganb-api.env
 
-          if ! grep -q '^RESEND_API_KEY=.' /tmp/loganb-api.env; then
-            echo "Copied env file looks incomplete." >&2
-            exit 1
-          fi
+        if ! grep -q '^RESEND_API_KEY=.' /tmp/loganb-api.env; then
+          echo "Copied env file looks incomplete." >&2
+          exit 1
+        fi
 
-          if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
-            sudo install -m 600 -o root -g root /tmp/loganb-api.env /etc/loganb-api.env
-            sudo shred -u /tmp/loganb-api.env 2>/dev/null || sudo rm -f /tmp/loganb-api.env
-          else
-            install -m 600 -o root -g root /tmp/loganb-api.env /etc/loganb-api.env
-            shred -u /tmp/loganb-api.env 2>/dev/null || rm -f /tmp/loganb-api.env
-          fi
+        if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
+          sudo install -m 600 -o root -g root /tmp/loganb-api.env /etc/loganb-api.env
+          sudo shred -u /tmp/loganb-api.env 2>/dev/null || sudo rm -f /tmp/loganb-api.env
+        else
+          install -m 600 -o root -g root /tmp/loganb-api.env /etc/loganb-api.env
+          shred -u /tmp/loganb-api.env 2>/dev/null || rm -f /tmp/loganb-api.env
+        fi
 
-          cd /var/www/loganbarsell.com
-          git pull
-          npm ci
-          npm run build
-          cd server
-          npm ci --omit=dev
-          cd ..
-          if systemctl cat loganb-api.service >/dev/null 2>&1; then
-            systemctl restart loganb-api
-            sleep 2
-            curl -fsS http://127.0.0.1:3001/api/health >/dev/null
-          else
-            echo "loganb-api.service not installed yet; skip API restart"
-          fi
-          nginx -t
-          systemctl reload nginx
-          SCRIPT
+        echo "Env installed to /etc/loganb-api.env"
+
+        cd /var/www/loganbarsell.com
+        git pull
+        npm ci
+        npm run build
+        cd server
+        npm ci --omit=dev
+        cd ..
+
+        if systemctl cat loganb-api.service >/dev/null 2>&1; then
+          systemctl restart loganb-api
+          sleep 2
+          curl -fsS http://127.0.0.1:3001/api/health >/dev/null
+          echo "API health check passed"
+        else
+          echo "loganb-api.service not installed yet; skip API restart"
+        fi
+
+        nginx -t
+        systemctl reload nginx
+        echo "Deploy finished"
+        SCRIPT
