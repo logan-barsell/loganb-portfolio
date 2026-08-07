@@ -51,70 +51,69 @@ sudo install -d -o loganb-api -g loganb-api -m 750 /var/lib/loganb-api/uploads
 sudo install -d -o root -g root -m 700 /var/backups/loganb-api
 ```
 
-### 3. Environment file
+### 3. Environment file (GitHub Actions secrets)
 
-Create `/etc/loganb-api.env`:
+Production env is written to `/etc/loganb-api.env` on every deploy from **individual GitHub Actions secrets**. Do not commit production secrets. Local development still uses `server/.env`.
 
-```env
-NODE_ENV=production
-HOST=127.0.0.1
-PORT=3001
+#### Required repository secrets
 
-DATABASE_PATH=/var/lib/loganb-api/inquiries.sqlite
-UPLOAD_PATH=/var/lib/loganb-api/uploads
+Repo → **Settings → Secrets and variables → Actions → New repository secret**:
 
-RESEND_API_KEY=re_your_private_key
-RESEND_FROM="Logan Barsell Web Services <website@mail.loganbarsell.com>"
-INQUIRY_NOTIFY_TO=contact@loganbarsell.com
+| Secret | Notes |
+|--------|--------|
+| `SSH_HOST` | Droplet IP or hostname (existing) |
+| `SSH_KEY` | Deploy private key (existing) |
+| `SSH_USERNAME` | SSH user (existing; often `root`) |
+| `RESEND_API_KEY` | Resend API key |
+| `RESEND_FROM` | e.g. `Logan Barsell Web Services <website@mail.loganbarsell.com>` |
+| `INQUIRY_NOTIFY_TO` | Inbox for inquiry notifications |
+| `ADMIN_EMAIL` | Admin login email |
+| `ADMIN_PASSWORD_HASH` | From `npm run hash-password` (value only, not the `ADMIN_PASSWORD_HASH=` prefix) |
+| `ADMIN_SESSION_SECRET` | `openssl rand -hex 32` |
+| `CLIENT_SESSION_SECRET` | Separate `openssl rand -hex 32` |
+| `STRIPE_SECRET_KEY` | Live `sk_live_…` for production |
+| `STRIPE_WEBHOOK_SECRET` | Live webhook signing secret |
+| `STRIPE_HOSTING_PRICE_ID_39` | Live Price ID |
+| `STRIPE_HOSTING_PRICE_ID_25` | Live Price ID |
+| `STRIPE_HOSTING_PRICE_ID_10` | Live Price ID |
 
-TRUST_PROXY=1
+#### Optional
 
-# Admin portal (never put these in GitHub secrets or React env)
-ADMIN_EMAIL=contact@loganbarsell.com
-ADMIN_PASSWORD_HASH=scrypt$16384$8$1$...from_hash_password_script...
-ADMIN_SESSION_SECRET=long_random_string_at_least_32_chars
-ADMIN_SESSION_TTL_SECONDS=43200
-ADMIN_SESSION_COOKIE_NAME=lb_admin_session
-ALLOWED_ORIGIN=https://loganbarsell.com
-PUBLIC_APP_URL=https://loganbarsell.com
+| Secret | Notes |
+|--------|--------|
+| `EMAIL_LOGO_URL` | Absolute logo URL for emails; omit to use `PUBLIC_APP_URL/email-logo.png` |
 
-# Client project portal (required in production; separate from admin session)
-CLIENT_SESSION_SECRET=another_long_random_string_at_least_32_chars
-CLIENT_SESSION_TTL_SECONDS=604800
-CLIENT_SESSION_COOKIE_NAME=lb_client_session
-CLIENT_PORTAL_SETUP_TTL_DAYS=7
-```
+#### Hardcoded on deploy (not secrets)
 
-Generate the password hash on any machine with the server dependencies installed (do not commit the plaintext password):
+These are written into `/etc/loganb-api.env` by the workflow:
+
+- `NODE_ENV=production`, `HOST=127.0.0.1`, `PORT=3001`
+- `DATABASE_PATH=/var/lib/loganb-api/inquiries.sqlite`, `UPLOAD_PATH=/var/lib/loganb-api/uploads`
+- `TRUST_PROXY=1`
+- `ALLOWED_ORIGIN=https://loganbarsell.com`, `PUBLIC_APP_URL=https://loganbarsell.com`
+- Admin/client cookie names and TTLs
+
+#### Generate hash / secrets
 
 ```bash
-cd /var/www/loganbarsell.com/server   # or your local server/ checkout
-npm run hash-password
-# copy only the printed ADMIN_PASSWORD_HASH=... line into /etc/loganb-api.env
+cd server && npm run hash-password
+# copy only the hash value into the ADMIN_PASSWORD_HASH secret
+
+openssl rand -hex 32   # ADMIN_SESSION_SECRET
+openssl rand -hex 32   # CLIENT_SESSION_SECRET (different value)
 ```
 
-Create a long session secret, for example:
+Changing `ADMIN_PASSWORD_HASH` invalidates every existing admin session. Changing `ADMIN_SESSION_SECRET` or `CLIENT_SESSION_SECRET` also invalidates sessions.
 
-```bash
-openssl rand -hex 32
-```
-
-Lock the env file down:
+If you ever write the file by hand for bootstrap:
 
 ```bash
 sudo chown root:root /etc/loganb-api.env
 sudo chmod 600 /etc/loganb-api.env
-```
-
-Restart the API after editing credentials so the new hash/secret load and the `admin_sessions` migration applies:
-
-```bash
 sudo systemctl restart loganb-api
 ```
 
-Changing `ADMIN_PASSWORD_HASH` invalidates every existing admin session (credential fingerprint mismatch). Changing `ADMIN_SESSION_SECRET` also invalidates sessions because cookie tokens are HMAC’d with that secret. Changing `CLIENT_SESSION_SECRET` invalidates all client project portal sessions the same way.
-
-`PUBLIC_APP_URL` must be the live site origin (e.g. `https://loganbarsell.com`). It is used in proposal share links and client portal setup emails. Missing it in production will fail API startup (`assertProductionConfig`).
+`PUBLIC_APP_URL` must be the live site origin. Missing required secrets will fail the deploy before restart.
 
 ### 4. Install systemd units
 
@@ -145,7 +144,9 @@ sudo systemctl reload nginx
 
 ## Deploy flow
 
-GitHub Actions SSHs to the droplet, pulls, builds the CRA app, installs server production dependencies, restarts `loganb-api` when the systemd unit exists (migrations run on API startup), checks `/api/health`, and reloads nginx.
+GitHub Actions SSHs to the droplet, writes `/etc/loganb-api.env` from repository secrets, pulls, builds the CRA app, installs server production dependencies, restarts `loganb-api` when the systemd unit exists (migrations run on API startup), checks `/api/health`, and reloads nginx.
+
+Never put API secrets in `REACT_APP_*` or any frontend env — only in GitHub Actions secrets → `/etc/loganb-api.env`.
 
 
 ## Admin portal
@@ -160,10 +161,10 @@ The React admin UI lives at `/login` and `/admin/*`. It is **not** linked from p
 
 ### First login / password rotation
 
-1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CLIENT_SESSION_SECRET`, `PUBLIC_APP_URL`, and `ALLOWED_ORIGIN` in the API env file.
-2. Restart `loganb-api`.
+1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `CLIENT_SESSION_SECRET` as GitHub Actions secrets (deploy writes them into `/etc/loganb-api.env`).
+2. Deploy (or restart `loganb-api` if you edited the file by hand).
 3. Visit `https://loganbarsell.com/login` (or `http://localhost:3000/login` locally).
-4. To rotate the password, run `npm run hash-password`, replace `ADMIN_PASSWORD_HASH`, restart the service—old sessions drop automatically.
+4. To rotate the password, run `npm run hash-password`, update the `ADMIN_PASSWORD_HASH` secret, push/redeploy (or restart after a manual edit)—old sessions drop automatically.
 
 Protected placeholders:
 
