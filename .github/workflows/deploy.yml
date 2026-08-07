@@ -33,8 +33,7 @@ jobs:
         command_timeout: 20m
         envs: RESEND_API_KEY,RESEND_FROM,INQUIRY_NOTIFY_TO,EMAIL_LOGO_URL,ADMIN_EMAIL,ADMIN_PASSWORD_HASH,ADMIN_SESSION_SECRET,CLIENT_SESSION_SECRET,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,STRIPE_HOSTING_PRICE_ID_39,STRIPE_HOSTING_PRICE_ID_25,STRIPE_HOSTING_PRICE_ID_10
         script: |
-          set -euo pipefail
-
+          bash -euo pipefail <<'SCRIPT'
           require_env() {
             local name="$1"
             if [ -z "${!name:-}" ]; then
@@ -120,3 +119,4 @@ jobs:
           fi
           nginx -t
           systemctl reload nginx
+          SCRIPT
