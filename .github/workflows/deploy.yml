@@ -107,15 +107,51 @@ jobs:
         echo "Prepared env file ($(wc -c < "$ENV_FILE") bytes)"
 
     - name: Copy env file to droplet
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        key: ${{ secrets.SSH_KEY }}
-        username: ${{ secrets.SSH_USERNAME }}
-        fingerprint: ${{ secrets.SSH_HOST_FINGERPRINT }}
-        source: deploy-artifacts/loganb-api.env
-        target: /tmp/
-        overwrite: true
+      env:
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+        SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
+      run: |
+        set -euo pipefail
+
+        ENV_FILE="$GITHUB_WORKSPACE/deploy-artifacts/loganb-api.env"
+        if [ ! -f "$ENV_FILE" ]; then
+          echo "Missing prepared env file at $ENV_FILE" >&2
+          exit 1
+        fi
+
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        # Keep trailing newline; some keys fail without it
+        printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+
+        SSH_OPTS=(
+          -i ~/.ssh/deploy_key
+          -o IdentitiesOnly=yes
+          -o BatchMode=yes
+        )
+
+        if [ -n "${SSH_HOST_FINGERPRINT:-}" ]; then
+          ssh-keyscan -t ed25519,rsa "$SSH_HOST" 2>/dev/null > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          if ! ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk '{print $2}' | grep -Fqx "$SSH_HOST_FINGERPRINT"; then
+            echo "SSH host fingerprint does not match SSH_HOST_FINGERPRINT secret." >&2
+            ssh-keygen -lf ~/.ssh/known_hosts -E sha256 >&2 || true
+            exit 1
+          fi
+          SSH_OPTS+=(-o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o StrictHostKeyChecking=yes)
+        else
+          SSH_OPTS+=(-o StrictHostKeyChecking=accept-new)
+        fi
+
+        # Native scp runs as the runner user, so chmod 600 on the env file is fine
+        scp "${SSH_OPTS[@]}" \
+          "$ENV_FILE" \
+          "${SSH_USERNAME}@${SSH_HOST}:/tmp/loganb-api.env"
+
+        echo "Copied env file to ${SSH_HOST}:/tmp/loganb-api.env"
 
     - name: Deploy app
       uses: appleboy/ssh-action@v0.1.2

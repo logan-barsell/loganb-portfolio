@@ -153,14 +153,14 @@ sudo systemctl reload nginx
 
 ## Deploy flow
 
-GitHub Actions builds a production env file on the runner from repository secrets (`chmod 600`), copies it to the droplet with SCP, then SSHs to:
+GitHub Actions builds a production env file on the runner from repository secrets (`chmod 600`), copies it with **native `scp`** (avoids Docker SCP permission issues with mode `600`), then SSHs to:
 
 1. `chmod 600 /tmp/loganb-api.env`
 2. `install` → `/etc/loganb-api.env` (`root:root` `600`)
 3. Shred/remove the temp copy
 4. Pull, build CRA, install server deps, restart `loganb-api` (migrations on startup), health-check, reload nginx
 
-Optional `SSH_HOST_FINGERPRINT` is passed to both SCP and SSH steps. Never put API secrets in `REACT_APP_*` or embed them in the SSH script body (they can appear in Actions logs).
+Optional `SSH_HOST_FINGERPRINT` is checked during SCP (`ssh-keyscan` + compare) and passed to the SSH deploy action. Never put API secrets in `REACT_APP_*` or embed them in the SSH script body (they can appear in Actions logs).
 
 If secrets were ever printed in a failed workflow log, rotate them (Stripe, Resend, session secrets) and update the GitHub secrets before relying on production.
 
