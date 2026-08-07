@@ -9,8 +9,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Deploy NodeJS app
-      uses: appleboy/ssh-action@v0.1.2
+    - name: Prepare production env file
+      id: prep_env
       env:
         RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         RESEND_FROM: ${{ secrets.RESEND_FROM }}
@@ -25,77 +25,94 @@ jobs:
         STRIPE_HOSTING_PRICE_ID_39: ${{ secrets.STRIPE_HOSTING_PRICE_ID_39 }}
         STRIPE_HOSTING_PRICE_ID_25: ${{ secrets.STRIPE_HOSTING_PRICE_ID_25 }}
         STRIPE_HOSTING_PRICE_ID_10: ${{ secrets.STRIPE_HOSTING_PRICE_ID_10 }}
+      run: |
+        set -euo pipefail
+
+        require_env() {
+          local name="$1"
+          if [ -z "${!name:-}" ]; then
+            echo "Missing required GitHub secret: $name" >&2
+            exit 1
+          fi
+        }
+
+        require_env RESEND_API_KEY
+        require_env RESEND_FROM
+        require_env INQUIRY_NOTIFY_TO
+        require_env ADMIN_EMAIL
+        require_env ADMIN_PASSWORD_HASH
+        require_env ADMIN_SESSION_SECRET
+        require_env CLIENT_SESSION_SECRET
+        require_env STRIPE_SECRET_KEY
+        require_env STRIPE_WEBHOOK_SECRET
+        require_env STRIPE_HOSTING_PRICE_ID_39
+        require_env STRIPE_HOSTING_PRICE_ID_25
+        require_env STRIPE_HOSTING_PRICE_ID_10
+
+        ENV_TMP="$(mktemp)"
+        {
+          printf '%s\n' 'NODE_ENV=production'
+          printf '%s\n' 'HOST=127.0.0.1'
+          printf '%s\n' 'PORT=3001'
+          printf '%s\n' ''
+          printf '%s\n' 'DATABASE_PATH=/var/lib/loganb-api/inquiries.sqlite'
+          printf '%s\n' 'UPLOAD_PATH=/var/lib/loganb-api/uploads'
+          printf '%s\n' ''
+          printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY"
+          printf 'RESEND_FROM="%s"\n' "${RESEND_FROM//\"/\\\"}"
+          printf 'INQUIRY_NOTIFY_TO=%s\n' "$INQUIRY_NOTIFY_TO"
+          printf '%s\n' ''
+          if [ -n "${EMAIL_LOGO_URL:-}" ]; then
+            printf 'EMAIL_LOGO_URL=%s\n' "$EMAIL_LOGO_URL"
+          fi
+          printf '%s\n' 'TRUST_PROXY=1'
+          printf '%s\n' ''
+          printf 'ADMIN_EMAIL=%s\n' "$ADMIN_EMAIL"
+          printf 'ADMIN_PASSWORD_HASH=%s\n' "$ADMIN_PASSWORD_HASH"
+          printf 'ADMIN_SESSION_SECRET=%s\n' "$ADMIN_SESSION_SECRET"
+          printf '%s\n' 'ADMIN_SESSION_TTL_SECONDS=43200'
+          printf '%s\n' 'ADMIN_SESSION_COOKIE_NAME=lb_admin_session'
+          printf '%s\n' 'ALLOWED_ORIGIN=https://loganbarsell.com'
+          printf '%s\n' 'PUBLIC_APP_URL=https://loganbarsell.com'
+          printf '%s\n' ''
+          printf 'CLIENT_SESSION_SECRET=%s\n' "$CLIENT_SESSION_SECRET"
+          printf '%s\n' 'CLIENT_SESSION_TTL_SECONDS=604800'
+          printf '%s\n' 'CLIENT_SESSION_COOKIE_NAME=lb_client_session'
+          printf '%s\n' 'CLIENT_PORTAL_SETUP_TTL_DAYS=7'
+          printf '%s\n' ''
+          printf 'STRIPE_SECRET_KEY=%s\n' "$STRIPE_SECRET_KEY"
+          printf 'STRIPE_WEBHOOK_SECRET=%s\n' "$STRIPE_WEBHOOK_SECRET"
+          printf 'STRIPE_HOSTING_PRICE_ID_39=%s\n' "$STRIPE_HOSTING_PRICE_ID_39"
+          printf 'STRIPE_HOSTING_PRICE_ID_25=%s\n' "$STRIPE_HOSTING_PRICE_ID_25"
+          printf 'STRIPE_HOSTING_PRICE_ID_10=%s\n' "$STRIPE_HOSTING_PRICE_ID_10"
+        } > "$ENV_TMP"
+
+        {
+          echo "env_b64<<EOF"
+          base64 -w0 "$ENV_TMP"
+          echo
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+        rm -f "$ENV_TMP"
+
+    - name: Deploy NodeJS app
+      uses: appleboy/ssh-action@v0.1.2
       with:
         host: ${{ secrets.SSH_HOST }}
         key: ${{ secrets.SSH_KEY }}
         username: ${{ secrets.SSH_USERNAME }}
         script_stop: true
         command_timeout: 20m
-        envs: RESEND_API_KEY,RESEND_FROM,INQUIRY_NOTIFY_TO,EMAIL_LOGO_URL,ADMIN_EMAIL,ADMIN_PASSWORD_HASH,ADMIN_SESSION_SECRET,CLIENT_SESSION_SECRET,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,STRIPE_HOSTING_PRICE_ID_39,STRIPE_HOSTING_PRICE_ID_25,STRIPE_HOSTING_PRICE_ID_10
         script: |
           bash -euo pipefail <<'SCRIPT'
-          require_env() {
-            local name="$1"
-            if [ -z "${!name:-}" ]; then
-              echo "Missing required secret/env: $name" >&2
-              exit 1
-            fi
-          }
-
-          require_env RESEND_API_KEY
-          require_env RESEND_FROM
-          require_env INQUIRY_NOTIFY_TO
-          require_env ADMIN_EMAIL
-          require_env ADMIN_PASSWORD_HASH
-          require_env ADMIN_SESSION_SECRET
-          require_env CLIENT_SESSION_SECRET
-          require_env STRIPE_SECRET_KEY
-          require_env STRIPE_WEBHOOK_SECRET
-          require_env STRIPE_HOSTING_PRICE_ID_39
-          require_env STRIPE_HOSTING_PRICE_ID_25
-          require_env STRIPE_HOSTING_PRICE_ID_10
-
           ENV_TMP="$(mktemp)"
           trap 'rm -f "$ENV_TMP"' EXIT
-          umask 077
 
-          {
-            printf '%s\n' 'NODE_ENV=production'
-            printf '%s\n' 'HOST=127.0.0.1'
-            printf '%s\n' 'PORT=3001'
-            printf '%s\n' ''
-            printf '%s\n' 'DATABASE_PATH=/var/lib/loganb-api/inquiries.sqlite'
-            printf '%s\n' 'UPLOAD_PATH=/var/lib/loganb-api/uploads'
-            printf '%s\n' ''
-            printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY"
-            # Quote for systemd EnvironmentFile when the value has spaces / <>
-            printf 'RESEND_FROM="%s"\n' "${RESEND_FROM//\"/\\\"}"
-            printf 'INQUIRY_NOTIFY_TO=%s\n' "$INQUIRY_NOTIFY_TO"
-            printf '%s\n' ''
-            if [ -n "${EMAIL_LOGO_URL:-}" ]; then
-              printf 'EMAIL_LOGO_URL=%s\n' "$EMAIL_LOGO_URL"
-            fi
-            printf '%s\n' 'TRUST_PROXY=1'
-            printf '%s\n' ''
-            printf 'ADMIN_EMAIL=%s\n' "$ADMIN_EMAIL"
-            printf 'ADMIN_PASSWORD_HASH=%s\n' "$ADMIN_PASSWORD_HASH"
-            printf 'ADMIN_SESSION_SECRET=%s\n' "$ADMIN_SESSION_SECRET"
-            printf '%s\n' 'ADMIN_SESSION_TTL_SECONDS=43200'
-            printf '%s\n' 'ADMIN_SESSION_COOKIE_NAME=lb_admin_session'
-            printf '%s\n' 'ALLOWED_ORIGIN=https://loganbarsell.com'
-            printf '%s\n' 'PUBLIC_APP_URL=https://loganbarsell.com'
-            printf '%s\n' ''
-            printf 'CLIENT_SESSION_SECRET=%s\n' "$CLIENT_SESSION_SECRET"
-            printf '%s\n' 'CLIENT_SESSION_TTL_SECONDS=604800'
-            printf '%s\n' 'CLIENT_SESSION_COOKIE_NAME=lb_client_session'
-            printf '%s\n' 'CLIENT_PORTAL_SETUP_TTL_DAYS=7'
-            printf '%s\n' ''
-            printf 'STRIPE_SECRET_KEY=%s\n' "$STRIPE_SECRET_KEY"
-            printf 'STRIPE_WEBHOOK_SECRET=%s\n' "$STRIPE_WEBHOOK_SECRET"
-            printf 'STRIPE_HOSTING_PRICE_ID_39=%s\n' "$STRIPE_HOSTING_PRICE_ID_39"
-            printf 'STRIPE_HOSTING_PRICE_ID_25=%s\n' "$STRIPE_HOSTING_PRICE_ID_25"
-            printf 'STRIPE_HOSTING_PRICE_ID_10=%s\n' "$STRIPE_HOSTING_PRICE_ID_10"
-          } > "$ENV_TMP"
+          printf '%s' '${{ steps.prep_env.outputs.env_b64 }}' | base64 -d > "$ENV_TMP"
+          if ! grep -q '^RESEND_API_KEY=.' "$ENV_TMP"; then
+            echo "Decoded env file looks empty or incomplete." >&2
+            exit 1
+          fi
 
           if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
             sudo install -m 600 -o root -g root "$ENV_TMP" /etc/loganb-api.env

@@ -144,9 +144,9 @@ sudo systemctl reload nginx
 
 ## Deploy flow
 
-GitHub Actions SSHs to the droplet, writes `/etc/loganb-api.env` from repository secrets, pulls, builds the CRA app, installs server production dependencies, restarts `loganb-api` when the systemd unit exists (migrations run on API startup), checks `/api/health`, and reloads nginx.
+GitHub Actions builds `/etc/loganb-api.env` on the runner from repository secrets (base64 payload), SSHs to the droplet, installs that file, pulls, builds the CRA app, installs server production dependencies, restarts `loganb-api` when the systemd unit exists (migrations run on API startup), checks `/api/health`, and reloads nginx.
 
-Never put API secrets in `REACT_APP_*` or any frontend env — only in GitHub Actions secrets → `/etc/loganb-api.env`.
+Secrets are read on the runner first so they do not depend on SSH `AcceptEnv` / appleboy env forwarding. Never put API secrets in `REACT_APP_*` or any frontend env.
 
 
 ## Admin portal
