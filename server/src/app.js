@@ -11,6 +11,7 @@ const adminProjectsRouter = require('./routes/adminProjects');
 const adminInvoicesRouter = require('./routes/adminInvoices');
 const proposalSharesRouter = require('./routes/proposalShares');
 const clientPortalRouter = require('./routes/clientPortal');
+const clientAuthRouter = require('./routes/clientAuth');
 const stripeWebhooksRouter = require('./routes/stripeWebhooks');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -42,6 +43,7 @@ function createApp() {
   app.use('/api/admin/projects', adminProjectsRouter);
   app.use('/api/admin/invoices', adminInvoicesRouter);
   app.use('/api/proposals/share', proposalSharesRouter);
+  app.use('/api/client-auth', clientAuthRouter);
   app.use('/api/projects', clientPortalRouter);
   app.use('/api/inquiries', inquiriesRouter);
 

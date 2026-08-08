@@ -219,7 +219,7 @@ function mapProjectDetail(row) {
     portal: {
       passwordSet: Boolean(row.portal_password_hash),
       passwordSetAt: toIsoUtc(row.portal_password_set_at),
-      setupPending: Boolean(row.portal_setup_token_hash),
+      setupPending: Boolean(row.portal_setup_pending),
       setupExpiresAt: toIsoUtc(row.portal_setup_expires_at),
     },
   };

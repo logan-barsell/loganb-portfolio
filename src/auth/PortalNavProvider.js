@@ -1,36 +1,88 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  fetchClientSession,
+  loginClient,
+  logoutClient,
+} from '../api/clientAuth';
 
 const PortalNavContext = createContext(null);
 
 /**
- * Lets the project portal register a logout handler so TopNav can swap
- * "Start a Project" for "Log Out" while the client is authenticated.
+ * Shared client-account state for login, project selection, portal access,
+ * and the site-wide logout action.
  */
 export function PortalNavProvider({ children }) {
-  const [session, setSession] = useState(null);
+  const [state, setState] = useState({
+    loading: true,
+    authenticated: false,
+    client: null,
+    projects: [],
+  });
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const register = useCallback((handlers) => {
-    setSession(handlers);
+  const applySession = useCallback((data) => {
+    setState({
+      loading: false,
+      authenticated: Boolean(data?.authenticated ?? data?.client),
+      client: data?.client || null,
+      projects: data?.projects || [],
+    });
   }, []);
 
-  const unregister = useCallback(() => {
-    setSession(null);
-  }, []);
+  const refresh = useCallback(async () => {
+    try {
+      const data = await fetchClientSession();
+      applySession(data);
+      return data;
+    } catch {
+      applySession(null);
+      return null;
+    }
+  }, [applySession]);
 
-  const setLoggingOut = useCallback((loggingOut) => {
-    setSession((prev) => (prev ? { ...prev, loggingOut: Boolean(loggingOut) } : prev));
-  }, []);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const login = useCallback(
+    async (email, password) => {
+      const data = await loginClient(email, password);
+      applySession({ ...data, authenticated: true });
+      return data;
+    },
+    [applySession]
+  );
+
+  const logout = useCallback(async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logoutClient();
+      applySession(null);
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [applySession, loggingOut]);
 
   const value = useMemo(
     () => ({
-      isAuthenticated: Boolean(session?.logout),
-      loggingOut: Boolean(session?.loggingOut),
-      logout: session?.logout || null,
-      setLoggingOut,
-      register,
-      unregister,
+      isAuthenticated: state.authenticated,
+      loading: state.loading,
+      client: state.client,
+      projects: state.projects,
+      loggingOut,
+      login,
+      logout,
+      refresh,
     }),
-    [session, register, unregister, setLoggingOut]
+    [state, loggingOut, login, logout, refresh]
   );
 
   return <PortalNavContext.Provider value={value}>{children}</PortalNavContext.Provider>;

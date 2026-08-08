@@ -230,6 +230,7 @@ function getAdminClientById(id) {
 }
 
 module.exports = {
+  normalizeClientEmail,
   findClientByEmail,
   createClient,
   setInquiryClientId,

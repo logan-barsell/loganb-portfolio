@@ -52,13 +52,6 @@ export async function loginPortal(projectId, password) {
   });
 }
 
-export async function logoutPortal(projectId) {
-  return projectRequest(`/api/projects/${encodeURIComponent(projectId)}/logout`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
-}
-
 export async function fetchPortalProject(projectId) {
   return projectRequest(`/api/projects/${encodeURIComponent(projectId)}`);
 }

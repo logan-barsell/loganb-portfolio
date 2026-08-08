@@ -9,6 +9,10 @@ const { sendProposalDeclinedEmails } = require('./templates/proposalDeclined');
 const { sendProjectStartedEmail } = require('./templates/projectStarted');
 const { sendProjectCompletedEmail } = require('./templates/projectCompleted');
 const { sendProjectReadyForLaunchEmail } = require('./templates/projectReadyForLaunch');
+const {
+  sendClientPasswordResetEmail,
+  sendClientPasswordChangedEmail,
+} = require('./templates/clientPassword');
 const { wrapEmailHtml } = require('./layout');
 
 module.exports = {
@@ -23,6 +27,8 @@ module.exports = {
   sendProjectStartedEmail,
   sendProjectCompletedEmail,
   sendProjectReadyForLaunchEmail,
+  sendClientPasswordResetEmail,
+  sendClientPasswordChangedEmail,
   buildEmail,
   wrapEmailHtml,
 };

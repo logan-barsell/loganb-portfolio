@@ -157,19 +157,19 @@ If secrets were ever printed in a failed workflow log, rotate them (Stripe, Rese
 
 ## Admin portal
 
-The React admin UI lives at `/login` and `/admin/*`. It is **not** linked from public navigation or the footer—open `/login` directly. React route guards improve UX; every admin API and attachment download is still authorized by Express session cookies.
+The React admin UI lives at `/admin/login` and `/admin/*`. It is **not** linked from public navigation or the footer—open `/admin/login` directly. React route guards improve UX; every admin API and attachment download is still authorized by Express session cookies.
 
 - Session cookie: `HttpOnly`, `SameSite=Strict`, `Secure` in production, 12-hour TTL by default
 - Login rate limit: 5 attempts per 15 minutes
 - Auth POSTs require a matching `Origin` (`ALLOWED_ORIGIN` in production)
-- `robots.txt` disallows `/login` and `/admin/` (indexing guidance only, not access control)
+- `robots.txt` disallows `/admin/login`, `/admin/`, `/client/`, and `/project/` (indexing guidance only, not access control)
 - Admin pages set `noindex, nofollow` in the document head
 
 ### First login / password rotation
 
 1. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `CLIENT_SESSION_SECRET` as GitHub Actions secrets (deploy writes them into `/etc/loganb-api.env`).
 2. Deploy (or restart `loganb-api` if you edited the file by hand).
-3. Visit `https://loganbarsell.com/login` (or `http://localhost:3000/login` locally).
+3. Visit `https://loganbarsell.com/admin/login` (or `http://localhost:3000/admin/login` locally).
 4. To rotate the password, run `npm run hash-password`, update the `ADMIN_PASSWORD_HASH` secret, push/redeploy (or restart after a manual edit)—old sessions drop automatically.
 
 Protected placeholders:

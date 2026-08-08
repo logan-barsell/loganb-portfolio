@@ -24,7 +24,6 @@ import {
   fetchPortalSession,
   fetchPortalSetup,
   loginPortal,
-  logoutPortal,
   openHostingPortal,
   portalAttachmentDownloadUrl,
   updatePortalDomain,
@@ -185,7 +184,7 @@ function PasswordForm({ title, lead, submitLabel, onSubmit, includeConfirm }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               sx={fieldSx}
-              helperText={includeConfirm ? 'At least 10 characters.' : undefined}
+              helperText={includeConfirm ? '10–256 characters.' : undefined}
             />
             {includeConfirm ? (
               <TextField
@@ -285,11 +284,8 @@ function PortalAttachments({ projectId, attachments, onChange }) {
   );
 }
 
-function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
+function Overview({ project, canSwitchProjects, onAttachmentsChange, onProjectUpdate }) {
   const toast = useToast();
-  const { register, unregister, setLoggingOut } = usePortalNav();
-  const onLogoutRef = useRef(onLogout);
-  onLogoutRef.current = onLogout;
   const [checkoutBusy, setCheckoutBusy] = useState(null);
   const [domainName, setDomainName] = useState(project.domainName || '');
   const [domainStatus, setDomainStatus] = useState(project.domainStatus || 'unknown');
@@ -314,21 +310,6 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
     setDomainStatus(project.domainStatus || 'unknown');
     setEditingDomain(false);
   };
-
-  useEffect(() => {
-    const logout = async () => {
-      setLoggingOut(true);
-      try {
-        await onLogoutRef.current();
-      } catch (err) {
-        setLoggingOut(false);
-        toast.error(err.message || 'Could not log out.');
-        throw err;
-      }
-    };
-    register({ logout });
-    return () => unregister();
-  }, [register, unregister, setLoggingOut, toast]);
 
   const billing = project.billing || {};
   const stripeEnabled = Boolean(billing.stripeEnabled);
@@ -426,9 +407,16 @@ function Overview({ project, onLogout, onAttachmentsChange, onProjectUpdate }) {
               />
             ) : null}
           </Stack>
-          <Typography sx={{ color: colors.muted, fontSize: 13 }}>
-            Created {formatDate(project.createdAt)}
-          </Typography>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            {canSwitchProjects ? (
+              <CtaButton to="/client/projects" size="small" secondary>
+                View All Projects
+              </CtaButton>
+            ) : null}
+            <Typography sx={{ color: colors.muted, fontSize: 13 }}>
+              Created {formatDate(project.createdAt)}
+            </Typography>
+          </Stack>
         </Stack>
 
         {project.status === 'on_hold' ? (
@@ -764,10 +752,23 @@ const ProjectPortal = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
+  const {
+    projects,
+    refresh,
+    isAuthenticated: clientAuthenticated,
+    loading: clientAuthLoading,
+  } = usePortalNav();
   const [mode, setMode] = useState(token ? 'setup' : 'loading');
   const [project, setProject] = useState(null);
   const [businessName, setBusinessName] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (mode === 'overview' && !clientAuthLoading && !clientAuthenticated) {
+      setProject(null);
+      setMode('login');
+    }
+  }, [mode, clientAuthLoading, clientAuthenticated]);
 
   useEffect(() => {
     const billing = searchParams.get('billing');
@@ -871,6 +872,7 @@ const ProjectPortal = () => {
           includeConfirm
           onSubmit={async ({ password, confirmPassword }) => {
             const data = await completePortalSetup(id, token, { password, confirmPassword });
+            await refresh();
             toast.success('Password saved.');
             enterOverview(data.project);
           }}
@@ -882,9 +884,9 @@ const ProjectPortal = () => {
   if (mode === 'login') {
     return (
       <>
-        <SeoNoIndex title="Project Login | Logan Barsell" />
+        <SeoNoIndex title="Client Login | Logan Barsell" />
         <PasswordForm
-          title="Project Portal Login"
+          title="Client Login"
           lead={
             businessName
               ? `Enter your password for ${businessName}.`
@@ -894,6 +896,7 @@ const ProjectPortal = () => {
           includeConfirm={false}
           onSubmit={async ({ password }) => {
             const data = await loginPortal(id, password);
+            await refresh();
             enterOverview(data.project);
           }}
         />
@@ -905,11 +908,7 @@ const ProjectPortal = () => {
     return (
       <Overview
         project={project}
-        onLogout={async () => {
-          await logoutPortal(id);
-          setProject(null);
-          setMode('login');
-        }}
+        canSwitchProjects={projects.length > 1}
         onAttachmentsChange={(attachments) => {
           setProject((prev) => (prev ? { ...prev, attachments } : prev));
         }}

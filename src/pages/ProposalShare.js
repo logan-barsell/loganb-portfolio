@@ -33,6 +33,7 @@ import {
 } from '../data/paymentSchedules';
 import { useToast } from '../toast/ToastProvider';
 import { colors } from '../theme/colors';
+import { usePortalNav } from '../auth/PortalNavProvider';
 
 function formatDate(iso) {
   if (!iso) return null;
@@ -141,11 +142,14 @@ const dialogPaperSx = {
 const ProposalShare = () => {
   const { token } = useParams();
   const toast = useToast();
+  const { refresh: refreshClientSession } = usePortalNav();
   const [share, setShare] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
   const [resultModal, setResultModal] = useState(null);
+  const [resultProjectId, setResultProjectId] = useState(null);
+  const [resultEmailSent, setResultEmailSent] = useState(true);
   const [revisionText, setRevisionText] = useState('');
   const [declineReason, setDeclineReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -216,8 +220,19 @@ const ProposalShare = () => {
     try {
       const data = await acceptProposalShare(token);
       applyShare(data.share);
+      setResultProjectId(data.projectId || null);
+      setResultEmailSent(data.emailSent !== false);
+      await refreshClientSession();
       clearModal();
-      setResultModal(data.already ? 'accepted-already' : 'accepted');
+      setResultModal(
+        data.already
+          ? data.requiresSetup
+            ? 'accepted-already-setup'
+            : 'accepted-already-existing'
+          : data.requiresSetup
+            ? 'accepted-setup'
+            : 'accepted-existing'
+      );
     } catch (err) {
       toast.error(err.message || 'Unable to accept proposal.');
     } finally {
@@ -580,8 +595,8 @@ const ProposalShare = () => {
         PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
-          {resultModal === 'accepted' || resultModal === 'accepted-already'
-            ? 'Proposal accepted'
+          {resultModal?.startsWith('accepted')
+            ? 'Proposal Accepted'
             : resultModal === 'revised'
               ? 'Revision requested'
               : resultModal === 'declined' || resultModal === 'declined-already'
@@ -597,11 +612,19 @@ const ProposalShare = () => {
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ color: colors.text, mb: 3 }}>
-            {resultModal === 'accepted'
-              ? 'Thank you for accepting. I just emailed you a link to set up your project portal — please check your inbox (and spam folder) to choose a password and get started.'
-              : resultModal === 'accepted-already'
-                ? 'This proposal was already accepted. Check your email for the project portal setup link if you still need to create your password.'
-                : resultModal === 'revised'
+            {resultModal === 'accepted-setup'
+              ? resultEmailSent
+                ? 'Thank you for accepting. I just emailed you a link to set up your client portal — please check your inbox (and spam folder) to choose a password and get started.'
+                : 'Your proposal was accepted, but the client portal setup email could not be delivered. Please contact me so I can send you a new setup link.'
+              : resultModal === 'accepted-existing'
+                ? resultEmailSent
+                  ? 'Thank you for accepting. I just emailed you a direct link to the project. Sign in with your existing client portal password to get started.'
+                  : 'Your proposal was accepted, but the project email could not be delivered. You can still open the project below with your existing client portal password.'
+                : resultModal === 'accepted-already-setup'
+                  ? 'This proposal was already accepted. Check your email for the client portal setup link if you still need to create your password.'
+                  : resultModal === 'accepted-already-existing'
+                    ? 'This proposal was already accepted. You can open the project using your existing client portal password.'
+                    : resultModal === 'revised'
                   ? 'Thanks for sharing your notes. I will review them and get back to you with an updated proposal as soon as possible.'
                   : resultModal === 'declined'
                     ? 'Thanks for letting me know. No further action is needed on your end — if your plans change later, you are always welcome to reach out.'
@@ -610,6 +633,13 @@ const ProposalShare = () => {
                       : null}
           </Typography>
           <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+            {resultProjectId &&
+            (resultModal === 'accepted-existing' ||
+              resultModal === 'accepted-already-existing') ? (
+              <CtaButton type="button" to={`/project/${resultProjectId}`} secondary>
+                View Project
+              </CtaButton>
+            ) : null}
             <CtaButton type="button" onClick={() => setResultModal(null)}>
               Close
             </CtaButton>

@@ -40,6 +40,7 @@ const config = {
   clientSessionTtlSeconds: Number(process.env.CLIENT_SESSION_TTL_SECONDS || 7 * 24 * 60 * 60),
   clientSessionCookieName: process.env.CLIENT_SESSION_COOKIE_NAME || 'lb_client_session',
   clientPortalSetupTtlDays: Number(process.env.CLIENT_PORTAL_SETUP_TTL_DAYS || 7),
+  clientPasswordResetTtlMinutes: Number(process.env.CLIENT_PASSWORD_RESET_TTL_MINUTES || 60),
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   stripeHostingPriceIds: {

@@ -739,7 +739,7 @@ const ProjectDetail = () => {
                     onClick={() => setResendOpen(true)}
                     disabled={resending}
                   >
-                    Resend Invite
+                    {hasPortalPassword ? 'Send Password Reset' : 'Resend Invite'}
                   </CtaButton>
                 }
               />
@@ -871,7 +871,7 @@ const ProjectDetail = () => {
             pr: 1,
           }}
         >
-          Resend portal invite?
+          {hasPortalPassword ? 'Send Password Reset?' : 'Resend Portal Invite?'}
           <IconButton
             aria-label="Close"
             onClick={closeResendModal}
@@ -890,7 +890,7 @@ const ProjectDetail = () => {
         <DialogContent>
           <Typography sx={{ color: colors.muted, mb: 3, fontSize: 14 }}>
             {hasPortalPassword
-              ? 'This emails a new setup link. Their current password keeps working until they finish choosing a new one.'
+              ? 'This emails a password reset link for the client account. Completing it changes the password for every project owned by this client and signs out all existing client sessions. Their current password keeps working until they finish the reset.'
               : 'This emails a new setup link. Any unused prior link will stop working.'}
           </Typography>
           <Stack direction="row" spacing={1.5} justifyContent="flex-end">
@@ -910,7 +910,11 @@ const ProjectDetail = () => {
               Cancel
             </Button>
             <CtaButton size="medium" onClick={confirmResendPortal} disabled={resending}>
-              {resending ? 'Sending…' : 'Send invite'}
+              {resending
+                ? 'Sending…'
+                : hasPortalPassword
+                  ? 'Send Password Reset'
+                  : 'Send Invite'}
             </CtaButton>
           </Stack>
         </DialogContent>

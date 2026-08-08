@@ -12,6 +12,7 @@ const {
 const {
   decisionContext,
   portalSetupUrl,
+  portalProjectUrl,
   formatSetupExpiryNote,
 } = require('../helpers');
 const { sendResendEmail } = require('../send');
@@ -43,6 +44,7 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
   const projectId = options.projectId || null;
   const setupUrl =
     portalSetup && projectId ? portalSetupUrl(projectId, portalSetup.rawToken) : null;
+  const portalUrl = !setupUrl && projectId ? portalProjectUrl(projectId) : null;
   const expiryNote = portalSetup ? formatSetupExpiryNote(portalSetup.expiresAt) : null;
 
   const kickoffLabel = formatKickoffForEmail(proposal.kickoff_date);
@@ -62,9 +64,9 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
       ]
     : [
         'What happens next:',
-        '1. I will follow up shortly to confirm kickoff details and next steps.',
-        '2. We will align on content, branding, and any materials needed from you.',
-        '3. Once kickoff is set, the project will move from on hold to started.',
+        '1. Open your new project using the link below and sign in with your existing client portal password.',
+        '2. Use the portal to review project details and share files.',
+        '3. I will follow up on content, payment, and kickoff timing.',
       ];
 
   const portalTextBlock = setupUrl
@@ -73,9 +75,16 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
         'Set up your project portal:',
         setupUrl,
         expiryNote,
-        'You will choose your own password — nothing is emailed as a temporary password.',
+        'You will choose your own password. The same client account will provide access to any future projects.',
       ]
-    : [];
+    : portalUrl
+      ? [
+          '',
+          'Open your project:',
+          portalUrl,
+          'Use the same password you use for your other client portal projects.',
+        ]
+      : [];
 
   const scheduleTextBlock = scheduleLines.length
     ? ['', 'Schedule:', ...scheduleLines]
@@ -103,9 +112,15 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
       ${emailCtaHtml(setupUrl, 'Set Up Portal')}
       <p style="margin:0 0 16px;color:${BRAND.muted};font-size:13px;">${escapeHtml(
         expiryNote
-      )} You will choose your own password.</p>
+      )} You will choose one password for your client account.</p>
     `
-    : '';
+    : portalUrl
+      ? `
+      <p style="margin:0 0 8px;color:${BRAND.bodyText};"><strong>Open your project</strong></p>
+      ${emailCtaHtml(portalUrl, 'View Project')}
+      <p style="margin:0 0 16px;color:${BRAND.muted};font-size:13px;">Use your existing client portal password.</p>
+    `
+      : '';
 
   const scheduleHtmlRows = [
     kickoffLabel ? htmlRow('Target kickoff', kickoffLabel) : '',
@@ -141,9 +156,9 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
             ? `<li>Open your project portal link below and choose a password (one-time setup).</li>
         <li>Use the portal to review project details and share files.</li>
         <li>I will follow up on content, payment, and kickoff timing.</li>`
-            : `<li>I will follow up shortly to confirm kickoff details and next steps.</li>
-        <li>We will align on content, branding, and any materials needed from you.</li>
-        <li>Once kickoff is set, the project will move from on hold to started.</li>`
+            : `<li>Open your new project using the link below and sign in with your existing client portal password.</li>
+        <li>Use the portal to review project details and share files.</li>
+        <li>I will follow up on content, payment, and kickoff timing.</li>`
         }
       </ol>
       ${portalHtmlBlock}
@@ -164,7 +179,7 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
     '',
     setupUrl
       ? 'A project was created on hold and a portal setup invite was emailed to the client.'
-      : 'A project was created on hold. Follow up on kickoff next.',
+      : 'A project was created on hold and the client was sent a direct portal link for their existing account.',
   ]
     .filter((part) => part !== null)
     .join('\n');
@@ -174,7 +189,10 @@ async function sendProposalAcceptedEmails(proposal, options = {}) {
         'A project was created on hold and a portal setup invite was emailed to the client.',
         { muted: true }
       )
-    : p('A project was created on hold. Follow up on kickoff next.', { muted: true });
+    : p(
+        'A project was created on hold and the client was sent a direct portal link for their existing account.',
+        { muted: true }
+      );
 
   const adminHtml = adminNoticeHtml(
     adminSubject,

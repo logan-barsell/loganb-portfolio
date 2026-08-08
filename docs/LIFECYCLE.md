@@ -64,12 +64,12 @@ draft ──Send──► sent ──BeginRevision──► draft ──Resend�
 | Revise | Proposal detail → Revise | `draft`; live shares invalidated |
 | Resend (unchanged) | Same Send modal | Share email again; new link |
 | Resend (changed) | Same Send modal | Revised proposal email; new link |
-| Accept | Client via public share link | Project `on_hold` + portal setup token/email |
+| Accept | Client via public share link | Project `on_hold`; new clients get setup email, returning clients get direct project link |
 | Mark as Started | Project detail (when `on_hold`) | `active`; client “project started” email |
 | Auto-start | Payment + kickoff rules (`maybeActivateProject`) | Same as start; **also** emails admin |
 | Mark as Completed | Project detail (when `active`) | `completed`; client “project complete” email |
 | Mark Ready for Launch | Project detail (when `completed` + hosting plan) | Sets `ready_for_launch_at`; client launch email |
-| Resend portal access | Project detail | New setup link email |
+| Resend portal access | Project detail | Setup email when unset; shared-account password reset email when set |
 
 Ready for Launch is **blocked** until the project is `completed` (`PROJECT_NOT_COMPLETED`).
 
@@ -80,9 +80,10 @@ Ready for Launch is **blocked** until the project is `completed` (`PROJECT_NOT_C
 | Contact / project inquiry | Visitor + admin notify | Confirmation to visitor; notify to `INQUIRY_NOTIFY_TO` |
 | Proposal share | Recipients you choose | Custom subject/body + View Proposal |
 | Revised proposal | Recipients you choose | When commercial content changed since last send |
-| Proposal accepted | Client + admin | “Proposal confirmed…”; project **on hold**; portal setup CTA if issued |
+| Proposal accepted | Client + admin | “Proposal confirmed…”; project **on hold**; setup CTA or existing-account project link |
 | Proposal revision / decline | Client + admin | Confirmation of their decision |
-| Portal access (invite/reset) | Client | Setup password link |
+| Portal access invite | Client | One-time setup link for the shared client account |
+| Forgot/reset password | Client | One-time reset link, then password-change confirmation |
 | Project started | Client always; **admin only if auto-start** | Portal login URL (not setup token) |
 | Project completed | Client | Mentions launch/hosting when a hosting plan exists |
 | Ready for launch | Client | Hosting unlocked; domain/DNS may still need coordination |
@@ -93,7 +94,11 @@ Templates live under [`server/src/services/email/templates/`](../server/src/serv
 
 ## Portal
 
-One portal per project. Clients use unique project links (setup + login). Unchanged by proposal revisions.
+Authentication belongs to the client, not the project: one email/password and one client-scoped session provide access to every eligible project owned by that client. Active, on-hold, and completed projects appear in the project selector; cancelled projects are excluded.
+
+Clients can enter through `/client/login` with email + password. One eligible project redirects directly to its overview; multiple projects open `/client/projects`. Unique `/project/:id` links remain supported and ask only for the shared password when signed out. Setup links remain project-context links, but setting the password establishes the client-wide account.
+
+Forgot-password responses never disclose whether an email exists. Reset tokens are random, stored only as SHA-256 hashes, expire after `CLIENT_PASSWORD_RESET_TTL_MINUTES`, are single-use, and revoke all client sessions after completion.
 
 ## Portal copy (hosting)
 

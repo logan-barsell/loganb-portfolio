@@ -23,6 +23,7 @@ import { primaryNav } from '../data/nav';
 import { colors } from '../theme/colors';
 import { usePortalNav } from '../auth/PortalNavProvider';
 import CtaButton from './CtaButton';
+import { useToast } from '../toast/ToastProvider';
 
 function HideOnScroll({ children }) {
   const trigger = useScrollTrigger();
@@ -38,8 +39,18 @@ const drawerWidth = 260;
 const TopNav = () => {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
-  const { isAuthenticated: portalAuthenticated, logout: portalLogout, loggingOut } =
-    usePortalNav();
+  const toast = useToast();
+  const {
+    isAuthenticated: portalAuthenticated,
+    logout: portalLogout,
+    loggingOut,
+    projects,
+  } = usePortalNav();
+  const isClientArea =
+    location.pathname.startsWith('/project/') || location.pathname.startsWith('/client/');
+  const showPortalLogout = portalAuthenticated && isClientArea;
+  const clientPortalPath =
+    projects.length === 1 ? `/project/${projects[0].id}` : '/client/projects';
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -51,22 +62,28 @@ const TopNav = () => {
     try {
       await portalLogout();
       setMobileOpen(false);
-    } catch {
-      // Overview already toasts on failure.
+    } catch (error) {
+      toast.error(error.message || 'Could not log out.');
     }
   };
 
-  const navCta = portalAuthenticated ? (
+  const navCta = showPortalLogout ? (
     <CtaButton onClick={handlePortalLogout} disabled={loggingOut} fullWidth={false}>
       {loggingOut ? 'Signing Out…' : 'Log Out'}
     </CtaButton>
+  ) : portalAuthenticated ? (
+    <CtaButton to={clientPortalPath}>Client Portal</CtaButton>
   ) : (
     <CtaButton to="/start">Start a Project</CtaButton>
   );
 
-  const mobileNavCta = portalAuthenticated ? (
+  const mobileNavCta = showPortalLogout ? (
     <CtaButton onClick={handlePortalLogout} disabled={loggingOut} fullWidth>
       {loggingOut ? 'Signing Out…' : 'Log Out'}
+    </CtaButton>
+  ) : portalAuthenticated ? (
+    <CtaButton to={clientPortalPath} fullWidth>
+      Client Portal
     </CtaButton>
   ) : (
     <CtaButton to="/start" fullWidth>
@@ -105,7 +122,7 @@ const TopNav = () => {
         <Box
           sx={{ mt: 4, px: 2 }}
           onClickCapture={(event) => {
-            if (portalAuthenticated) event.stopPropagation();
+            if (showPortalLogout) event.stopPropagation();
           }}
         >
           {mobileNavCta}

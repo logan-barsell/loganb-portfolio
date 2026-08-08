@@ -7,7 +7,12 @@ const {
   p,
   clientFooterHtml,
 } = require('../layout');
-const { firstName, portalSetupUrl, formatSetupExpiryNote } = require('../helpers');
+const {
+  firstName,
+  portalSetupUrl,
+  clientLoginUrl,
+  formatSetupExpiryNote,
+} = require('../helpers');
 const { sendResendEmail } = require('../send');
 
 /**
@@ -33,6 +38,7 @@ async function sendPortalAccessEmail(client, portalSetup) {
   }
 
   const expiryNote = formatSetupExpiryNote(portalSetup.expiresAt);
+  const loginUrl = clientLoginUrl();
   const isReset = Boolean(portalSetup.isReset);
   const clientSubject = isReset
     ? `Reset your project portal access — ${businessName}`
@@ -50,7 +56,9 @@ async function sendPortalAccessEmail(client, portalSetup) {
     `Set up your portal: ${setupUrl}`,
     expiryNote,
     '',
-    'After setup, return anytime with your password at the project page.',
+    loginUrl
+      ? `After setup, return anytime at the client login page: ${loginUrl}`
+      : 'After setup, return anytime using your email and password.',
     '',
     'Reply to this email anytime if you have questions.',
     '',
@@ -64,7 +72,7 @@ async function sendPortalAccessEmail(client, portalSetup) {
       ${p(intro)}
       ${emailCtaHtml(setupUrl, 'Set Up Portal')}
       <p style="margin:0 0 16px;color:${BRAND.muted};font-size:13px;">${escapeHtml(expiryNote)}</p>
-      ${p('After setup, return anytime with your password at the project page.')}
+      ${p('After setup, use the same email and password to access all of your projects.')}
     `,
     footerHtml: clientFooterHtml(),
   });

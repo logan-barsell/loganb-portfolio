@@ -207,8 +207,24 @@ function getAdminProjectById(id, database = getDb()) {
       `SELECT
          p.id, p.name, p.status, p.proposal_id, p.inquiry_id, p.client_id,
          p.created_at, p.updated_at,
-         p.portal_password_hash, p.portal_setup_token_hash, p.portal_setup_expires_at,
-         p.portal_password_set_at,
+         c.portal_password_hash, c.portal_password_set_at,
+         EXISTS(
+           SELECT 1
+           FROM client_auth_tokens cat
+           WHERE cat.client_id = c.id
+             AND cat.project_id = p.id
+             AND cat.purpose = 'setup'
+             AND cat.consumed_at IS NULL
+             AND cat.expires_at > datetime('now')
+         ) AS portal_setup_pending,
+         (
+           SELECT MAX(cat.expires_at)
+           FROM client_auth_tokens cat
+           WHERE cat.client_id = c.id
+             AND cat.project_id = p.id
+             AND cat.purpose = 'setup'
+             AND cat.consumed_at IS NULL
+         ) AS portal_setup_expires_at,
          p.domain_name, p.domain_status, p.working_brief,
          p.design_payment_status, p.hosting_status,
          p.stripe_subscription_id, p.started_at, p.started_by,

@@ -20,8 +20,8 @@ const iconMap = {
 
 const SiteFooter = ({
   navItems = footerNav,
-  actionLabel = 'Start a Project',
-  actionTo = '/start',
+  actionLabel = 'Client Login',
+  actionTo = '/client/login',
   onAction,
 }) => {
   return (

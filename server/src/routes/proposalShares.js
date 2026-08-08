@@ -33,6 +33,8 @@ router.post(
         ok: true,
         already: result.already,
         emailSent: result.emailSent,
+        projectId: result.projectId,
+        requiresSetup: result.requiresSetup,
         share: result.share,
       });
     } catch (error) {

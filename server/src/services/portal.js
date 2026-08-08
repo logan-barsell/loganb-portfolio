@@ -18,12 +18,12 @@ const {
 } = require('../config/constants');
 const { config } = require('../config');
 const {
-  getProjectById,
   getAdminProjectById,
   getProjectForPortalSetup,
-  completePortalPasswordSetup,
+  completeClientPasswordWithToken,
   getPortalProjectBundle,
   issuePortalSetupToken,
+  issuePasswordResetToken,
 } = require('../db');
 const {
   listInvoicesForProject,
@@ -41,8 +41,8 @@ const {
 } = require('./billing/stripeClient');
 const { assertRealHostingPriceId } = require('./billing/subscriptionSync');
 const { hashPassword, verifyPassword } = require('./auth/password');
-const { createProjectClientSession } = require('./auth/clientSessions');
-const { sendPortalAccessEmail } = require('./email');
+const { createClientAccountSession } = require('./auth/clientSessions');
+const { sendPortalAccessEmail, sendClientPasswordResetEmail } = require('./email');
 const { createHttpError } = require('../utils/normalize');
 const { toIsoUtc, formatMoney, mapAttachmentMeta } = require('../lib/format');
 
@@ -102,7 +102,7 @@ function mapPortalOverview(bundle) {
     readyForLaunchAt: toIsoUtc(project.ready_for_launch_at),
     activationBlockReason: blockReason,
     createdAt: toIsoUtc(project.created_at),
-    portalPasswordSet: Boolean(project.portal_password_hash),
+    portalPasswordSet: Boolean(client?.portal_password_hash),
     client: client
       ? {
           name: client.name || null,
@@ -207,6 +207,11 @@ function validatePassword(password, confirmPassword) {
       password: 'Password must be at least 10 characters.',
     });
   }
+  if (pw.length > 256) {
+    throw createHttpError(400, 'Password must be 256 characters or fewer.', 'VALIDATION_ERROR', {
+      password: 'Password must be 256 characters or fewer.',
+    });
+  }
   if (pw !== confirm) {
     throw createHttpError(400, 'Passwords do not match.', 'VALIDATION_ERROR', {
       confirmPassword: 'Passwords do not match.',
@@ -231,17 +236,32 @@ async function completePortalSetup(projectId, token, { password, confirmPassword
 
   validatePassword(password, confirmPassword);
   const passwordHash = await hashPassword(String(password));
-  completePortalPasswordSetup(result.project.id, passwordHash);
+  const client = completeClientPasswordWithToken({
+    clientId: result.client.id,
+    passwordHash,
+    rawToken: token,
+    purpose: 'setup',
+  });
+  if (!client) {
+    throw createHttpError(
+      404,
+      'This setup link is invalid or has expired. Ask for a new portal access email.',
+      'NOT_FOUND'
+    );
+  }
 
-  const session = createProjectClientSession(result.project.id);
+  const session = createClientAccountSession(result.client.id);
   const bundle = getPortalProjectBundle(result.project.id);
 
   return { session, project: mapPortalOverview(bundle) };
 }
 
 async function loginToPortal(projectId, password) {
-  const project = getProjectById(projectId);
-  if (!project || !project.portal_password_hash) {
+  const bundle = getPortalProjectBundle(projectId);
+  if (!bundle?.project || !bundle?.client || bundle.project.status === 'cancelled') {
+    throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+  }
+  if (!bundle.client.portal_password_hash) {
     throw createHttpError(
       401,
       'Portal access is not set up yet. Use the setup link from your email.',
@@ -249,13 +269,17 @@ async function loginToPortal(projectId, password) {
     );
   }
 
-  const ok = await verifyPassword(String(password || ''), project.portal_password_hash);
-  if (!ok) {
+  const suppliedPassword = String(password || '');
+  const passwordInRange = suppliedPassword.length <= 256;
+  const ok = await verifyPassword(
+    passwordInRange ? suppliedPassword : 'invalid-client-password',
+    bundle.client.portal_password_hash
+  );
+  if (!passwordInRange || !ok) {
     throw createHttpError(401, 'Incorrect password.', 'UNAUTHORIZED');
   }
 
-  const session = createProjectClientSession(project.id);
-  const bundle = getPortalProjectBundle(project.id);
+  const session = createClientAccountSession(bundle.client.id);
 
   return { session, project: mapPortalOverview(bundle) };
 }
@@ -370,30 +394,33 @@ async function resendPortalAccess(projectId) {
   }
 
   const hadPassword = Boolean(row.portal_password_hash);
-  // Rotate setup token only — keep existing password until they finish the new setup link.
-  const portalSetup = issuePortalSetupToken(row.id, { resetPassword: false });
+  const portalSetup = hadPassword
+    ? issuePasswordResetToken(row.client_id)
+    : issuePortalSetupToken(row.id);
   if (!portalSetup) {
     throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
   }
 
-  await sendPortalAccessEmail(
-    {
-      name: row.client_name,
-      businessName: row.inquiry_business_name || row.client_business_name,
-      email: clientEmail,
-    },
-    {
+  const client = {
+    name: row.client_name,
+    businessName: row.inquiry_business_name || row.client_business_name,
+    email: clientEmail,
+  };
+  if (hadPassword) {
+    await sendClientPasswordResetEmail(client, portalSetup);
+  } else {
+    await sendPortalAccessEmail(client, {
       projectId: row.id,
       rawToken: portalSetup.rawToken,
       expiresAt: portalSetup.expiresAt,
-      isReset: hadPassword,
-    }
-  );
+      isReset: false,
+    });
+  }
 
   return {
     project: getAdminProjectById(row.id),
     message: hadPassword
-      ? 'Portal setup link emailed. Current password still works until they finish setup.'
+      ? 'Password reset link emailed. Their current password works until they complete the reset.'
       : 'Portal access email sent.',
   };
 }

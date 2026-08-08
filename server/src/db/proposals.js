@@ -161,7 +161,11 @@ function getProposalById(id, database = getDb()) {
 
   const client = database
     .prepare(
-      `SELECT id, name, email, phone, business_name FROM clients WHERE id = ?`
+      `SELECT
+         id, name, email, phone, business_name,
+         portal_password_hash, portal_password_set_at
+       FROM clients
+       WHERE id = ?`
     )
     .get(proposal.client_id);
 
@@ -458,8 +462,8 @@ function acceptProposal(proposalId, database = getDb()) {
     syncInquiryPipeline(existing.inquiry_id, database);
     const updatedProject = getProjectByProposalId(proposalId, database);
     let portalSetup = null;
-    if (updatedProject && !updatedProject.portal_password_hash) {
-      portalSetup = issuePortalSetupToken(updatedProject.id, { resetPassword: false }, database);
+    if (updatedProject && !existing.client?.portal_password_hash) {
+      portalSetup = issuePortalSetupToken(updatedProject.id, {}, database);
     }
     return {
       proposal: getProposalById(proposalId, database),

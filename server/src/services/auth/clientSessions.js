@@ -6,7 +6,7 @@ const {
   touchClientSession,
   deleteClientSessionByTokenHash,
   deleteExpiredClientSessions,
-  deleteClientSessionsForProject,
+  deleteClientSessionsForClient,
 } = require('../../db');
 
 function hashClientToken(token) {
@@ -17,14 +17,14 @@ function createOpaqueToken() {
   return crypto.randomBytes(32).toString('base64url');
 }
 
-function createProjectClientSession(projectId) {
+function createClientAccountSession(clientId) {
   deleteExpiredClientSessions();
   const token = createOpaqueToken();
   const tokenHash = hashClientToken(token);
   const expiresAt = new Date(Date.now() + config.clientSessionTtlSeconds * 1000).toISOString();
   createClientSession({
     tokenHash,
-    projectId,
+    clientId,
     expiresAt,
   });
   return { token, expiresAt };
@@ -53,15 +53,15 @@ function destroyClientSession(token) {
   deleteClientSessionByTokenHash(hashClientToken(token));
 }
 
-function destroyClientSessionsForProject(projectId) {
-  deleteClientSessionsForProject(projectId);
+function destroyClientSessionsForClient(clientId) {
+  deleteClientSessionsForClient(clientId);
 }
 
 module.exports = {
   hashClientToken,
   createOpaqueToken,
-  createProjectClientSession,
+  createClientAccountSession,
   getValidClientSession,
   destroyClientSession,
-  destroyClientSessionsForProject,
+  destroyClientSessionsForClient,
 };

@@ -134,18 +134,19 @@ router.post('/:id/logout', requireSameOrigin, express.json({ limit: '8kb' }), (r
 router.get('/:id/session', (req, res, next) => {
   try {
     const project = getProjectById(req.params.id);
-    if (!project) {
+    const bundle = project ? getPortalProjectBundle(project.id) : null;
+    if (!project || !bundle?.client || project.status === 'cancelled') {
       throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
     }
 
     const token = getClientSessionToken(req);
     const session = getValidClientSession(token);
-    const authenticated = Boolean(session && session.project_id === project.id);
+    const authenticated = Boolean(session && session.client_id === project.client_id);
 
     return res.status(200).json({
       ok: true,
       authenticated,
-      mustSetPassword: !project.portal_password_hash,
+      mustSetPassword: !bundle.client.portal_password_hash,
       project: {
         id: project.id,
         businessName: displayNameForProject(project.id),

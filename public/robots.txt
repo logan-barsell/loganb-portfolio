@@ -1,5 +1,6 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow: /login
+Disallow: /admin/login
+Disallow: /client/
 Disallow: /admin/
 Disallow: /project/

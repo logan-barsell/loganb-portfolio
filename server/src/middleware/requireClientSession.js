@@ -4,15 +4,11 @@ const {
   clearClientSessionCookie,
 } = require('../services/auth/clientCookies');
 const { setNoStore } = require('../services/auth/cookies');
-const { getProjectById } = require('../db');
 
-function requireClientProject(req, res, next) {
+function requireClientSession(req, res, next) {
   setNoStore(res);
-
-  const projectId = String(req.params.id || '').trim();
   const token = getClientSessionToken(req);
   const session = getValidClientSession(token);
-
   if (!session) {
     clearClientSessionCookie(res);
     if (token) destroyClientSession(token);
@@ -23,19 +19,9 @@ function requireClientProject(req, res, next) {
     });
   }
 
-  const project = getProjectById(projectId);
-  if (!project || project.client_id !== session.client_id || project.status === 'cancelled') {
-    return res.status(404).json({
-      ok: false,
-      code: 'NOT_FOUND',
-      message: 'Project not found.',
-    });
-  }
-
   req.clientSession = session;
   req.clientId = session.client_id;
-  req.clientProjectId = projectId;
   return next();
 }
 
-module.exports = { requireClientProject };
+module.exports = { requireClientSession };

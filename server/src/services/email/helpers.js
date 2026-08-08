@@ -31,6 +31,16 @@ function portalProjectUrl(projectId) {
   return `${config.publicAppUrl}/project/${projectId}`;
 }
 
+function clientLoginUrl() {
+  if (!config.publicAppUrl) return null;
+  return `${config.publicAppUrl}/client/login`;
+}
+
+function clientPasswordResetUrl(rawToken) {
+  if (!config.publicAppUrl || !rawToken) return null;
+  return `${config.publicAppUrl}/client/reset-password/${rawToken}`;
+}
+
 function projectEmailContext({ project, client, inquiry } = {}) {
   const clientRow = client || {};
   const inquiryRow = inquiry || {};
@@ -77,6 +87,8 @@ module.exports = {
   decisionContext,
   portalSetupUrl,
   portalProjectUrl,
+  clientLoginUrl,
+  clientPasswordResetUrl,
   projectEmailContext,
   formatSetupExpiryNote,
 };

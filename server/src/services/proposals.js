@@ -490,6 +490,8 @@ async function acceptShare(token) {
   return {
     already: Boolean(result.already),
     emailSent,
+    projectId: result.project?.id || null,
+    requiresSetup: !result.proposal?.client?.portal_password_hash,
     share: buildShareResponse(proposal.id, share),
   };
 }

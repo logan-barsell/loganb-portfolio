@@ -26,6 +26,10 @@ import { Privacy, Terms } from './pages/Legal';
 import NotFound from './pages/NotFound';
 import ProposalShare from './pages/ProposalShare';
 import ProjectPortal from './pages/ProjectPortal';
+import ClientLogin from './pages/ClientLogin';
+import ClientProjects from './pages/ClientProjects';
+import ClientForgotPassword from './pages/ClientForgotPassword';
+import ClientResetPassword from './pages/ClientResetPassword';
 import { AuthProvider } from './auth/AuthProvider';
 import { PortalNavProvider } from './auth/PortalNavProvider';
 import RequireAuth from './auth/RequireAuth';
@@ -79,7 +83,8 @@ const App = () => {
               </Route>
 
               <Route element={<AppLayout />}>
-                <Route path="/login" element={<Login />} />
+                <Route path="/admin/login" element={<Login />} />
+                <Route path="/login" element={<Navigate to="/client/login" replace />} />
                 <Route path="/" element={<Home />} />
                 <Route path="/services" element={<Services />} />
                 <Route path="/pricing" element={<Pricing />} />
@@ -90,6 +95,13 @@ const App = () => {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/p/:token" element={<ProposalShare />} />
+                <Route path="/client/login" element={<ClientLogin />} />
+                <Route path="/client/projects" element={<ClientProjects />} />
+                <Route path="/client/forgot-password" element={<ClientForgotPassword />} />
+                <Route
+                  path="/client/reset-password/:token"
+                  element={<ClientResetPassword />}
+                />
                 <Route path="/project/:id/setup/:token" element={<ProjectPortal />} />
                 <Route path="/project/:id" element={<ProjectPortal />} />
                 <Route path="*" element={<NotFound />} />
