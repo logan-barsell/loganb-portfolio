@@ -1,5 +1,22 @@
 export const GENERIC_SERVER_ERROR = 'Server unavailable. Please try again.';
 
+/**
+ * API error codes that may arrive as 5xx but still carry a useful JSON message.
+ * Keep aligned with server CLIENT_VISIBLE_5XX_CODES + common billing codes.
+ */
+const SURFACED_ERROR_CODES = new Set([
+  'STRIPE_NOT_CONFIGURED',
+  'STRIPE_REQUEST_FAILED',
+  'STRIPE_PRICE_NOT_CONFIGURED',
+  'HOSTING_TARGET_NOT_CONFIGURED',
+  'HOSTING_NOT_READY',
+  'PROVISION_IN_PROGRESS',
+  'VALIDATION_ERROR',
+  'UNAUTHORIZED',
+  'FORBIDDEN_ORIGIN',
+  'NOT_FOUND',
+]);
+
 function looksLikeHtmlOrGarbage(message) {
   if (message === null || message === undefined) return false;
   const text = String(message).trim();
@@ -31,15 +48,27 @@ export async function parseJsonSafe(response) {
  */
 export function userFacingErrorMessage(response, data, fallback = 'Request failed.') {
   if (!response) return GENERIC_SERVER_ERROR;
-  if ([502, 503, 504].includes(response.status)) return GENERIC_SERVER_ERROR;
-  if (response.status >= 500) return GENERIC_SERVER_ERROR;
   if (data && data._nonJson) return GENERIC_SERVER_ERROR;
 
+  const code = data && typeof data.code === 'string' ? data.code : null;
   const message = data && data.message;
+  const hasSurfacedCode = code && SURFACED_ERROR_CODES.has(code);
+  const safeMessage =
+    typeof message === 'string' && message.trim() && !looksLikeHtmlOrGarbage(message)
+      ? message.trim()
+      : null;
+
+  // Known app codes: prefer JSON message even on 502/503.
+  if (hasSurfacedCode && safeMessage) return safeMessage;
+  if (hasSurfacedCode) return fallback;
+
+  if ([502, 503, 504].includes(response.status)) return GENERIC_SERVER_ERROR;
+  if (response.status >= 500) return GENERIC_SERVER_ERROR;
+
   if (looksLikeHtmlOrGarbage(message)) {
     return response.ok === false ? GENERIC_SERVER_ERROR : fallback;
   }
-  if (typeof message === 'string' && message.trim()) return message.trim();
+  if (safeMessage) return safeMessage;
   return fallback;
 }
 

@@ -314,14 +314,23 @@ async function startDesignCheckout(projectId, invoiceId) {
 
   const bundle = requirePortalBundle(projectId);
 
-  const session = await createDesignCheckoutSession({
-    invoice,
-    client: bundle.client,
-    projectId,
-  });
-  markInvoiceCheckoutSession(invoice.id, session.id);
-
-  return { url: session.url };
+  try {
+    const session = await createDesignCheckoutSession({
+      invoice,
+      client: bundle.client,
+      projectId,
+    });
+    markInvoiceCheckoutSession(invoice.id, session.id);
+    return { url: session.url };
+  } catch (err) {
+    console.error(
+      '[billing] design checkout failed',
+      `project=${projectId}`,
+      `invoice=${invoiceId}`,
+      err.code || err.message || err
+    );
+    throw err;
+  }
 }
 
 async function startHostingCheckout(projectId) {
@@ -349,17 +358,26 @@ async function startHostingCheckout(projectId) {
   }
 
   const hostingInvoice = findHostingInvoiceForProject(projectId);
-  const session = await createHostingCheckoutSession({
-    projectId,
-    client: bundle.client,
-    priceId,
-    invoiceId: hostingInvoice?.id || null,
-  });
-  if (hostingInvoice) {
-    markInvoiceCheckoutSession(hostingInvoice.id, session.id);
+  try {
+    const session = await createHostingCheckoutSession({
+      projectId,
+      client: bundle.client,
+      priceId,
+      invoiceId: hostingInvoice?.id || null,
+    });
+    if (hostingInvoice) {
+      markInvoiceCheckoutSession(hostingInvoice.id, session.id);
+    }
+    return { url: session.url };
+  } catch (err) {
+    console.error(
+      '[billing] hosting checkout failed',
+      `project=${projectId}`,
+      `price=${priceId}`,
+      err.code || err.message || err
+    );
+    throw err;
   }
-
-  return { url: session.url };
 }
 
 async function startBillingPortal(projectId) {
