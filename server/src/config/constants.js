@@ -217,6 +217,16 @@ const HOSTING_STATUS_LABELS = {
   overdue: 'Overdue',
 };
 
+const SITE_PROVISION_STATUSES = ['none', 'dns_waiting', 'provisioning', 'live', 'failed'];
+
+const SITE_PROVISION_STATUS_LABELS = {
+  none: 'Not Provisioned',
+  dns_waiting: 'DNS Waiting',
+  provisioning: 'Provisioning',
+  live: 'Live',
+  failed: 'Failed',
+};
+
 const INVOICE_KINDS = ['deposit', 'balance', 'full', 'hosting'];
 
 const INVOICE_KIND_LABELS = {
@@ -340,6 +350,8 @@ module.exports = {
   DESIGN_PAYMENT_STATUS_LABELS,
   HOSTING_STATUSES,
   HOSTING_STATUS_LABELS,
+  SITE_PROVISION_STATUSES,
+  SITE_PROVISION_STATUS_LABELS,
   INVOICE_KINDS,
   INVOICE_KIND_LABELS,
   INVOICE_STATUSES,

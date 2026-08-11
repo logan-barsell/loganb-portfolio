@@ -87,6 +87,14 @@ export function hostingStatusChipSx(status) {
   return TONE.awaitingYou;
 }
 
+/** Site provision (`none` | `dns_waiting` | `provisioning` | `live` | `failed`). */
+export function siteProvisionStatusChipSx(status) {
+  if (status === 'live') return TONE.active;
+  if (status === 'failed') return TONE.dead;
+  if (status === 'provisioning' || status === 'dns_waiting') return TONE.awaitingYou;
+  return TONE.awaitingClient;
+}
+
 /** Invoice status (`due` | `paid` | `void`). */
 export function invoiceStatusChipSx(status) {
   if (status === 'paid') return TONE.active;

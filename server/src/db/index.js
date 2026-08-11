@@ -4,6 +4,7 @@ const attachments = require('./attachments');
 const adminSessions = require('./adminSessions');
 const inquiries = require('./inquiries');
 const projects = require('./projects');
+const projectSites = require('./projectSites');
 const portal = require('./portal');
 const proposals = require('./proposals');
 const proposalShares = require('./proposalShares');
@@ -49,6 +50,8 @@ module.exports = {
   getProjectForInquiry: projects.getProjectForInquiry,
   getAdminProjectById: projects.getAdminProjectById,
   listAdminProjects: projects.listAdminProjects,
+  getProjectSite: projectSites.getProjectSite,
+  upsertProjectSite: projectSites.upsertProjectSite,
   issuePortalSetupToken: portal.issuePortalSetupToken,
   issuePasswordResetToken: portal.issuePasswordResetToken,
   getClientAuthToken: portal.getClientAuthToken,

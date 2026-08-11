@@ -69,9 +69,12 @@ draft ──Send──► sent ──BeginRevision──► draft ──Resend�
 | Auto-start | Payment + kickoff rules (`maybeActivateProject`) | Same as start; **also** emails admin |
 | Mark as Completed | Project detail (when `active`) | `completed`; client “project complete” email |
 | Mark Ready for Launch | Project detail (when `completed` + hosting plan) | Sets `ready_for_launch_at`; client launch email |
+| Provision Site | Project detail (domain + managed hosting plan) | SSH to hosting droplet; nginx + Certbot; `project_sites` status. No email. Independent of Ready for Launch |
 | Resend portal access | Project detail | Setup email when unset; shared-account password reset email when set |
 
 Ready for Launch is **blocked** until the project is `completed` (`PROJECT_NOT_COMPLETED`).
+
+**Provision Site** requires a valid `domain_name`, proposal `hosting_plan !== none`, and `CLIENT_HOSTING_*` on the API. Apex DNS must point at `CLIENT_HOSTING_PUBLIC_IP` or status becomes `dns_waiting`. Does not unlock Stripe checkout.
 
 ## Client emails
 
@@ -109,4 +112,5 @@ Forgot-password responses never disclose whether an email exists. Reset tokens a
 ## Related docs
 
 - Local commands and reset: [`README.md`](../README.md)  
-- Production env, Stripe webhook, DB wipe: [`DEPLOY.md`](../DEPLOY.md)
+- Production env, Stripe webhook, DB wipe: [`DEPLOY.md`](../DEPLOY.md)  
+- Client hosting droplets / Provision Site: [`HOSTING.md`](HOSTING.md)

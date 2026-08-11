@@ -3,7 +3,8 @@
 This CRA app uses client-side routes (`/services`, `/pricing`, `/work`, etc.) and an Express API under `/api`.
 
 Local setup and commands: [`README.md`](README.md).  
-Project stages and emails: [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md).
+Project stages and emails: [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md).  
+Client hosting droplets and **Provision Site**: [`docs/HOSTING.md`](docs/HOSTING.md).
 
 ## nginx
 
@@ -82,6 +83,14 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | Secret | Notes |
 |--------|--------|
 | `EMAIL_LOGO_URL` | Absolute logo URL for emails; omit to use `PUBLIC_APP_URL/email-logo.png` |
+| `CLIENT_HOSTING_SSH_HOST` | Hosting droplet IP/hostname for **Provision Site** (VPC private IP preferred) |
+| `CLIENT_HOSTING_PUBLIC_IP` | Hosting droplet public IP (DNS hint + apex check) |
+| `CLIENT_HOSTING_SSH_USER` | Default `site-provision` if omitted |
+| `CLIENT_HOSTING_SSH_KEY_PATH` | Default `/etc/loganb-api/client-host.key` if omitted |
+| `CLIENT_HOSTING_SSH_PORT` | Default `22` if omitted |
+| `CLIENT_HOSTING_KNOWN_HOSTS_PATH` | Default `/var/lib/loganb-api/ssh/known_hosts` if omitted |
+
+Private SSH key for client hosting stays on disk on the personal droplet — not in GitHub secrets. Runbooks: [`docs/HOSTING.md`](docs/HOSTING.md).
 
 #### Hardcoded on deploy (not secrets)
 

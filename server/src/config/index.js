@@ -48,6 +48,18 @@ const config = {
     hosting_25: process.env.STRIPE_HOSTING_PRICE_ID_25 || 'price_temp_hosting_25',
     hosting_10: process.env.STRIPE_HOSTING_PRICE_ID_10 || 'price_temp_hosting_10',
   },
+  clientHosting: {
+    sshHost: (process.env.CLIENT_HOSTING_SSH_HOST || '').trim(),
+    sshUser: (process.env.CLIENT_HOSTING_SSH_USER || 'site-provision').trim() || 'site-provision',
+    sshKeyPath: (
+      process.env.CLIENT_HOSTING_SSH_KEY_PATH || '/etc/loganb-api/client-host.key'
+    ).trim(),
+    sshPort: Number(process.env.CLIENT_HOSTING_SSH_PORT || 22) || 22,
+    publicIp: (process.env.CLIENT_HOSTING_PUBLIC_IP || '').trim(),
+    knownHostsPath: (
+      process.env.CLIENT_HOSTING_KNOWN_HOSTS_PATH || '/var/lib/loganb-api/ssh/known_hosts'
+    ).trim(),
+  },
 };
 
 function assertProductionConfig() {

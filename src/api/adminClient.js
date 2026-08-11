@@ -197,6 +197,13 @@ export async function setProjectReadyForLaunch(id, ready) {
   });
 }
 
+export async function provisionProjectSite(id) {
+  return adminRequest(`/api/admin/projects/${encodeURIComponent(id)}/provision-site`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 export async function fetchInvoices(params) {
   return adminRequest(`/api/admin/invoices${buildQuery(params)}`);
 }

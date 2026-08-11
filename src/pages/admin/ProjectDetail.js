@@ -25,6 +25,7 @@ import {
   fetchProject,
   markProjectCompleted,
   markProjectStarted,
+  provisionProjectSite,
   resendPortalAccess,
   setProjectReadyForLaunch,
   updateProject,
@@ -40,7 +41,9 @@ import {
   inquiryTypeChipSx,
   packageChipSx,
   pipelineStageChipSx,
+  siteProvisionStatusChipSx,
 } from '../../data/statusChips';
+import { SITE_PROVISION_STATUS_LABELS } from '../../data/siteProvision';
 import {
   formatRevisionLimit,
   resolvePaymentScheduleLabel,
@@ -176,6 +179,8 @@ const ProjectDetail = () => {
   const [markingCompleted, setMarkingCompleted] = useState(false);
   const [readyLaunchOpen, setReadyLaunchOpen] = useState(false);
   const [readyLaunchBusy, setReadyLaunchBusy] = useState(false);
+  const [provisionOpen, setProvisionOpen] = useState(false);
+  const [provisionBusy, setProvisionBusy] = useState(false);
   const [domainName, setDomainName] = useState('');
   const [domainStatus, setDomainStatus] = useState('unknown');
   const [domainSaving, setDomainSaving] = useState(false);
@@ -328,6 +333,38 @@ const ProjectDetail = () => {
     }
   };
 
+  const closeProvisionModal = () => {
+    if (provisionBusy) return;
+    setProvisionOpen(false);
+  };
+
+  const confirmProvisionSite = async () => {
+    if (provisionBusy || !project) return;
+    setProvisionBusy(true);
+    try {
+      const data = await provisionProjectSite(id);
+      setProject(data.project);
+      const nextStatus = data.project?.siteProvisionStatus;
+      if (nextStatus === 'live') {
+        toast.success('Site provisioned.');
+      } else if (nextStatus === 'dns_waiting') {
+        toast.error(
+          data.project?.siteProvisionError ||
+            'Point the domain’s A record at the hosting IP, then retry.'
+        );
+      } else if (nextStatus === 'failed') {
+        toast.error(data.project?.siteProvisionError || 'Provisioning failed.');
+      } else {
+        toast.success('Provision request finished.');
+      }
+      setProvisionOpen(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to provision site.');
+    } finally {
+      setProvisionBusy(false);
+    }
+  };
+
   const saveDomain = async () => {
     if (domainSaving) return;
     setDomainSaving(true);
@@ -373,6 +410,19 @@ const ProjectDetail = () => {
   const hasPortalPassword = Boolean(project?.portal?.passwordSet);
   const hasHostingPlan =
     Boolean(project?.proposal?.hostingPlan) && project.proposal.hostingPlan !== 'none';
+  const siteProvisionStatus = project?.siteProvisionStatus || 'none';
+  const siteProvisionLabel =
+    project?.siteProvisionStatusLabel ||
+    SITE_PROVISION_STATUS_LABELS[siteProvisionStatus] ||
+    'Not Provisioned';
+  const canProvisionSite =
+    Boolean(project?.domainName) &&
+    hasHostingPlan &&
+    Boolean(project?.hostingTargetConfigured) &&
+    project?.status !== 'cancelled';
+  const provisionCtaLabel =
+    siteProvisionStatus === 'none' ? 'Provision Site' : 'Retry Provision';
+  const provisionInFlight = provisionBusy || siteProvisionStatus === 'provisioning';
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -806,6 +856,45 @@ const ProjectDetail = () => {
                   />
                 </>
               )}
+              <ChipField
+                label="Site Provision"
+                chipLabel={siteProvisionLabel}
+                chipSx={siteProvisionStatusChipSx(siteProvisionStatus)}
+                helper={
+                  project.hostingPublicIp
+                    ? `Point the domain’s A record at ${project.hostingPublicIp}, then provision.`
+                    : !project.hostingTargetConfigured
+                      ? 'Hosting target is not configured on this server.'
+                      : !hasHostingPlan
+                        ? 'Provision Site is available for managed hosting plans.'
+                        : !project.domainName
+                          ? 'Enter a domain name before provisioning.'
+                          : null
+                }
+                action={
+                  canProvisionSite ? (
+                    <CtaButton
+                      type="button"
+                      size="medium"
+                      onClick={() => setProvisionOpen(true)}
+                      disabled={provisionInFlight || editingDomain}
+                    >
+                      {provisionInFlight ? 'Provisioning…' : provisionCtaLabel}
+                    </CtaButton>
+                  ) : null
+                }
+              />
+              {project.siteProvisionError ? (
+                <Typography sx={{ color: colors.muted, fontSize: 13, mb: 2 }}>
+                  {project.siteProvisionError}
+                </Typography>
+              ) : null}
+              {project.siteWwwRoot ? (
+                <Field label="Site Root" value={project.siteWwwRoot} />
+              ) : null}
+              {project.siteProvisionedAt ? (
+                <Field label="Provisioned" value={formatDate(project.siteProvisionedAt)} />
+              ) : null}
             </DetailBlock>
 
             <DetailBlock title="Billing">
@@ -1113,6 +1202,74 @@ const ProjectDetail = () => {
             </Button>
             <CtaButton size="medium" onClick={confirmReadyForLaunch} disabled={readyLaunchBusy}>
               {readyLaunchBusy ? 'Saving…' : 'Mark Ready for Launch'}
+            </CtaButton>
+          </Stack>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={provisionOpen}
+        onClose={closeProvisionModal}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            backgroundColor: colors.navSolid,
+            color: colors.text,
+            border: `1px solid rgba(149, 99, 187, 0.5)`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            color: colors.text,
+            pr: 1,
+          }}
+        >
+          {provisionCtaLabel}?
+          <IconButton
+            aria-label="Close"
+            onClick={closeProvisionModal}
+            disabled={provisionBusy}
+            sx={{
+              color: colors.muted,
+              '&.Mui-disabled': {
+                opacity: 1,
+                color: colors.muted,
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: colors.muted, mb: 3, fontSize: 14 }}>
+            This creates the nginx site and TLS certificate on the hosting droplet. The domain’s A
+            record must already point at{' '}
+            {project?.hostingPublicIp || 'the hosting IP'}. This does not email the client or unlock
+            hosting checkout.
+          </Typography>
+          <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+            <Button
+              onClick={closeProvisionModal}
+              disabled={provisionBusy}
+              sx={{
+                color: colors.muted,
+                textTransform: 'none',
+                '&.Mui-disabled': {
+                  opacity: 1,
+                  color: colors.muted,
+                  WebkitTextFillColor: colors.muted,
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <CtaButton size="medium" onClick={confirmProvisionSite} disabled={provisionBusy}>
+              {provisionBusy ? 'Provisioning…' : provisionCtaLabel}
             </CtaButton>
           </Stack>
         </DialogContent>

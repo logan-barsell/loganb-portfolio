@@ -226,6 +226,11 @@ function getAdminProjectById(id, database = getDb()) {
              AND cat.consumed_at IS NULL
          ) AS portal_setup_expires_at,
          p.domain_name, p.domain_status, p.working_brief,
+         ps.provision_status AS site_provision_status,
+         ps.last_error AS site_provision_error,
+         ps.nginx_site AS site_nginx_site,
+         ps.www_root AS site_www_root,
+         ps.provisioned_at AS site_provisioned_at,
          p.design_payment_status, p.hosting_status,
          p.stripe_subscription_id, p.started_at, p.started_by,
          p.ready_for_launch_at,
@@ -258,6 +263,7 @@ function getAdminProjectById(id, database = getDb()) {
        INNER JOIN clients c ON c.id = p.client_id
        LEFT JOIN inquiries i ON i.id = p.inquiry_id
        LEFT JOIN proposals pr ON pr.id = p.proposal_id
+       LEFT JOIN project_sites ps ON ps.project_id = p.id
        WHERE p.id = ?`
     )
     .get(id);

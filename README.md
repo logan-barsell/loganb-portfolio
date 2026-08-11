@@ -10,6 +10,7 @@ Public portfolio site (React / CRA) plus an Express API for inquiries, admin, pr
 | [`server/`](server/) | Express API (`/api`), SQLite, migrations, email/billing |
 | [`DEPLOY.md`](DEPLOY.md) | Production nginx, systemd, env, backups, DB reset |
 | [`docs/LIFECYCLE.md`](docs/LIFECYCLE.md) | Project stages and which emails fire when |
+| [`docs/HOSTING.md`](docs/HOSTING.md) | Client site provision (droplet, nginx, Certbot, admin CTA) |
 | [`server/.env.example`](server/.env.example) | API env template |
 
 ## Lifecycle (short)
@@ -85,4 +86,4 @@ npm run server:seed:inquiry
 
 ## Production
 
-See [`DEPLOY.md`](DEPLOY.md) for nginx, systemd, `/etc/loganb-api.env`, Resend, Stripe webhooks, backups, and troubleshooting.
+See [`DEPLOY.md`](DEPLOY.md) for nginx, systemd, `/etc/loganb-api.env`, Resend, Stripe webhooks, backups, and troubleshooting. Client hosting droplets and **Provision Site**: [`docs/HOSTING.md`](docs/HOSTING.md).

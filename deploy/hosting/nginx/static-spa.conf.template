@@ -1,0 +1,17 @@
+# Static SPA vhost. Certbot rewrites this block for TLS.
+# Placeholders: __DOMAIN__
+
+server {
+  listen 80;
+  listen [::]:80;
+  server_name __DOMAIN__ www.__DOMAIN__;
+
+  root /var/www/__DOMAIN__/current;
+  index index.html;
+
+  client_max_body_size 20m;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}

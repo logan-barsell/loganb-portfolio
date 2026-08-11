@@ -24,6 +24,12 @@ jobs:
         STRIPE_HOSTING_PRICE_ID_39: ${{ secrets.STRIPE_HOSTING_PRICE_ID_39 }}
         STRIPE_HOSTING_PRICE_ID_25: ${{ secrets.STRIPE_HOSTING_PRICE_ID_25 }}
         STRIPE_HOSTING_PRICE_ID_10: ${{ secrets.STRIPE_HOSTING_PRICE_ID_10 }}
+        CLIENT_HOSTING_SSH_HOST: ${{ secrets.CLIENT_HOSTING_SSH_HOST }}
+        CLIENT_HOSTING_PUBLIC_IP: ${{ secrets.CLIENT_HOSTING_PUBLIC_IP }}
+        CLIENT_HOSTING_SSH_USER: ${{ secrets.CLIENT_HOSTING_SSH_USER }}
+        CLIENT_HOSTING_SSH_KEY_PATH: ${{ secrets.CLIENT_HOSTING_SSH_KEY_PATH }}
+        CLIENT_HOSTING_SSH_PORT: ${{ secrets.CLIENT_HOSTING_SSH_PORT }}
+        CLIENT_HOSTING_KNOWN_HOSTS_PATH: ${{ secrets.CLIENT_HOSTING_KNOWN_HOSTS_PATH }}
       run: |
         set -euo pipefail
 
@@ -96,6 +102,28 @@ jobs:
           printf 'STRIPE_HOSTING_PRICE_ID_39=%s\n' "$STRIPE_HOSTING_PRICE_ID_39"
           printf 'STRIPE_HOSTING_PRICE_ID_25=%s\n' "$STRIPE_HOSTING_PRICE_ID_25"
           printf 'STRIPE_HOSTING_PRICE_ID_10=%s\n' "$STRIPE_HOSTING_PRICE_ID_10"
+          if [ -n "${CLIENT_HOSTING_SSH_HOST:-}" ] || [ -n "${CLIENT_HOSTING_PUBLIC_IP:-}" ]; then
+            printf '%s\n' ''
+            printf '%s\n' '# Client hosting droplet (Provision Site)'
+            if [ -n "${CLIENT_HOSTING_SSH_HOST:-}" ]; then
+              printf 'CLIENT_HOSTING_SSH_HOST=%s\n' "$CLIENT_HOSTING_SSH_HOST"
+            fi
+            if [ -n "${CLIENT_HOSTING_PUBLIC_IP:-}" ]; then
+              printf 'CLIENT_HOSTING_PUBLIC_IP=%s\n' "$CLIENT_HOSTING_PUBLIC_IP"
+            fi
+            if [ -n "${CLIENT_HOSTING_SSH_USER:-}" ]; then
+              printf 'CLIENT_HOSTING_SSH_USER=%s\n' "$CLIENT_HOSTING_SSH_USER"
+            fi
+            if [ -n "${CLIENT_HOSTING_SSH_KEY_PATH:-}" ]; then
+              printf 'CLIENT_HOSTING_SSH_KEY_PATH=%s\n' "$CLIENT_HOSTING_SSH_KEY_PATH"
+            fi
+            if [ -n "${CLIENT_HOSTING_SSH_PORT:-}" ]; then
+              printf 'CLIENT_HOSTING_SSH_PORT=%s\n' "$CLIENT_HOSTING_SSH_PORT"
+            fi
+            if [ -n "${CLIENT_HOSTING_KNOWN_HOSTS_PATH:-}" ]; then
+              printf 'CLIENT_HOSTING_KNOWN_HOSTS_PATH=%s\n' "$CLIENT_HOSTING_KNOWN_HOSTS_PATH"
+            fi
+          fi
         } > "$ENV_FILE"
         chmod 600 "$ENV_FILE"
 

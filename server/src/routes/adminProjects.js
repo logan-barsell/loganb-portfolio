@@ -13,6 +13,7 @@ const {
   intakeOptionLabel,
   DOMAIN_STATUSES,
   DOMAIN_STATUS_LABELS,
+  SITE_PROVISION_STATUS_LABELS,
   DESIGN_PAYMENT_STATUS_LABELS,
   HOSTING_STATUS_LABELS,
   INVOICE_KIND_LABELS,
@@ -39,6 +40,8 @@ const {
   setReadyForLaunch,
   maybeActivateAndNotify,
 } = require('../services/projects');
+const { provisionProjectSite, hostingTargetConfigured } = require('../services/siteProvision');
+const { config } = require('../config');
 const { requireAdmin } = require('../middleware/requireAdmin');
 const { setNoStore, requireSameOrigin } = require('../services/auth/cookies');
 const { createHttpError, trimToNull, enforceMaxLength } = require('../utils/normalize');
@@ -124,6 +127,17 @@ function mapProjectDetail(row) {
     domainName: row.domain_name || null,
     domainStatus: row.domain_status || 'unknown',
     domainStatusLabel: DOMAIN_STATUS_LABELS[row.domain_status] || row.domain_status,
+    siteProvisionStatus: row.site_provision_status || 'none',
+    siteProvisionStatusLabel:
+      SITE_PROVISION_STATUS_LABELS[row.site_provision_status || 'none'] ||
+      row.site_provision_status ||
+      'Not Provisioned',
+    siteProvisionError: row.site_provision_error || null,
+    siteNginxSite: row.site_nginx_site || null,
+    siteWwwRoot: row.site_www_root || null,
+    siteProvisionedAt: toIsoUtc(row.site_provisioned_at),
+    hostingTargetConfigured: hostingTargetConfigured(),
+    hostingPublicIp: config.clientHosting.publicIp || null,
     workingBrief: row.working_brief || null,
     startedAt: toIsoUtc(row.started_at),
     startedBy: row.started_by || null,
@@ -376,6 +390,26 @@ router.post(
       }
 
       await setReadyForLaunch(req.params.id, ready);
+      const refreshed = getAdminProjectById(req.params.id);
+      return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/provision-site',
+  requireSameOrigin,
+  express.json({ limit: '8kb' }),
+  async (req, res, next) => {
+    try {
+      const existing = getAdminProjectById(req.params.id);
+      if (!existing) {
+        throw createHttpError(404, 'Project not found.', 'NOT_FOUND');
+      }
+
+      await provisionProjectSite(req.params.id);
       const refreshed = getAdminProjectById(req.params.id);
       return res.status(200).json({ ok: true, project: mapProjectDetail(refreshed) });
     } catch (error) {
